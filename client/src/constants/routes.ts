@@ -7,6 +7,7 @@ export const ROUTES = {
   RESET_PASSWORD: '/reset-password',
   DASHBOARD: '/dashboard',
   SESSIONS: '/sessions',
+  SECURITY: '/security',
 } as const;
 
 export const PUBLIC_ROUTES = [
@@ -21,4 +22,5 @@ export const PUBLIC_ROUTES = [
 export const PROTECTED_ROUTES = [
   ROUTES.DASHBOARD,
   ROUTES.SESSIONS,
+  ROUTES.SECURITY,
 ];

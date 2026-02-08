@@ -1,7 +1,13 @@
 const User = require('../models/User');
 const { TOKEN_TYPES } = require('../models/Token');
+const { ActivityLog, ACTIVITY_TYPES } = require('../models/ActivityLog');
 const { createActionToken, consumeActionToken } = require('./token.service');
-const { sendVerificationEmail, sendPasswordResetEmail } = require('./email.service');
+const {
+  sendVerificationEmail,
+  sendPasswordResetEmail,
+  sendSecurityAlert,
+  sendAccountLockedEmail,
+} = require('./email.service');
 const sessionService = require('./session.service');
 const ApiError = require('../utils/ApiError');
 
@@ -50,6 +56,14 @@ const verifyEmail = async (rawToken) => {
     throw ApiError.notFound('User not found');
   }
 
+  // Log email verification
+  await ActivityLog.createLog(
+    user._id,
+    ACTIVITY_TYPES.EMAIL_VERIFIED,
+    'Email address verified successfully',
+    null
+  );
+
   return { message: 'Email verified successfully' };
 };
 
@@ -64,9 +78,32 @@ const login = async ({ email, password }, req) => {
     throw ApiError.unauthorized('Invalid email or password');
   }
 
+  // Check if account is locked
+  if (user.isAccountLocked()) {
+    const unlockTime = new Date(user.lockUntil).toLocaleString();
+    throw ApiError.forbidden(
+      `Account is temporarily locked due to multiple failed login attempts. Please try again after ${unlockTime}`
+    );
+  }
+
   const isPasswordValid = await user.comparePassword(password);
   if (!isPasswordValid) {
+    // Increment failed login attempts
+    await user.incLoginAttempts();
+    
+    // Reload user to check if account is now locked
+    const updatedUser = await User.findById(user._id);
+    if (updatedUser.isAccountLocked() && updatedUser.emailNotifications) {
+      const unlockTime = new Date(updatedUser.lockUntil).toLocaleString();
+      await sendAccountLockedEmail(updatedUser.email, updatedUser.name, unlockTime);
+    }
+
     throw ApiError.unauthorized('Invalid email or password');
+  }
+
+  // Reset failed login attempts on successful login
+  if (user.failedLoginAttempts > 0) {
+    await user.resetLoginAttempts();
   }
 
   if (!user.isEmailVerified) {
@@ -75,6 +112,29 @@ const login = async ({ email, password }, req) => {
 
   // Create session with race-condition protection
   const { session, tokens } = await sessionService.createSession(user._id, req);
+
+  // Log login activity
+  await ActivityLog.createLog(
+    user._id,
+    ACTIVITY_TYPES.LOGIN,
+    `Logged in from ${req.useragent?.browser || 'Unknown'} on ${req.useragent?.os || 'Unknown'}`,
+    req,
+    { sessionId: session._id }
+  );
+
+  // Send security alert email if notifications enabled
+  if (user.emailNotifications) {
+    const deviceInfo = `${req.useragent?.browser || 'Unknown'} on ${req.useragent?.os || 'Unknown'}`;
+    const ip = req.clientIp || req.ip || 'Unknown';
+    await sendSecurityAlert(
+      user.email,
+      user.name,
+      'New Login Detected',
+      ip,
+      deviceInfo,
+      `${process.env.CLIENT_URL || ''}/sessions`
+    );
+  }
 
   return {
     user: {
@@ -147,23 +207,192 @@ const resetPassword = async (rawToken, newPassword) => {
   // Invalidate ALL active sessions (security requirement)
   await sessionService.revokeAllSessions(user._id);
 
+  // Log password reset
+  await ActivityLog.createLog(
+    user._id,
+    ACTIVITY_TYPES.PASSWORD_RESET,
+    'Password reset via email link',
+    null
+  );
+
+  // Send security alert
+  const updatedUser = await User.findById(user._id);
+  if (updatedUser.emailNotifications) {
+    await sendSecurityAlert(
+      updatedUser.email,
+      updatedUser.name,
+      'Password Reset',
+      null,
+      null,
+      `${process.env.CLIENT_URL || ''}/security`
+    );
+  }
+
   return { message: 'Password reset successfully. Please log in with your new password' };
 };
 
 /**
  * Logs out from current session.
  */
-const logout = async (sessionId, userId) => {
+const logout = async (sessionId, userId, req) => {
   await sessionService.revokeSession(sessionId, userId);
+  
+  // Log logout activity
+  await ActivityLog.createLog(
+    userId,
+    ACTIVITY_TYPES.LOGOUT,
+    'Logged out from current device',
+    req
+  );
+
   return { message: 'Logged out successfully' };
 };
 
 /**
  * Logs out from all sessions.
  */
-const logoutAll = async (userId) => {
+const logoutAll = async (userId, req) => {
   await sessionService.revokeAllSessions(userId);
+  
+  // Log logout all activity
+  await ActivityLog.createLog(
+    userId,
+    ACTIVITY_TYPES.LOGOUT_ALL,
+    'Logged out from all devices',
+    req
+  );
+
   return { message: 'Logged out from all devices' };
+};
+
+/**
+ * Changes user password (requires current password).
+ */
+const changePassword = async (userId, currentPassword, newPassword) => {
+  const user = await User.findById(userId).select('+password');
+  if (!user) {
+    throw ApiError.notFound('User not found');
+  }
+
+  const isPasswordValid = await user.comparePassword(currentPassword);
+  if (!isPasswordValid) {
+    throw ApiError.unauthorized('Current password is incorrect');
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  // Invalidate ALL active sessions for security
+  await sessionService.revokeAllSessions(userId);
+
+  // Log password change
+  await ActivityLog.createLog(
+    userId,
+    ACTIVITY_TYPES.PASSWORD_CHANGED,
+    'Password changed successfully',
+    null
+  );
+
+  // Send security alert
+  const updatedUser = await User.findById(userId);
+  if (updatedUser.emailNotifications) {
+    await sendSecurityAlert(
+      updatedUser.email,
+      updatedUser.name,
+      'Password Changed',
+      null,
+      null,
+      `${process.env.CLIENT_URL || ''}/security`
+    );
+  }
+
+  return { message: 'Password changed successfully. Please log in again' };
+};
+
+/**
+ * Updates user profile (name).
+ */
+const updateProfile = async (userId, updates) => {
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: updates },
+    { new: true, runValidators: true }
+  );
+
+  if (!user) {
+    throw ApiError.notFound('User not found');
+  }
+
+  // Log profile update
+  await ActivityLog.createLog(
+    userId,
+    ACTIVITY_TYPES.PROFILE_UPDATED,
+    `Profile updated: ${Object.keys(updates).join(', ')}`,
+    null,
+    { updates }
+  );
+
+  return {
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      isEmailVerified: user.isEmailVerified,
+      createdAt: user.createdAt,
+    },
+  };
+};
+
+/**
+ * Gets user activity log.
+ */
+const getActivityLog = async (userId, limit = 50) => {
+  return ActivityLog.getUserActivity(userId, limit);
+};
+
+/**
+ * Deletes user account and all associated data.
+ */
+const deleteAccount = async (userId, password) => {
+  const user = await User.findById(userId).select('+password');
+  if (!user) {
+    throw ApiError.notFound('User not found');
+  }
+
+  const isPasswordValid = await user.comparePassword(password);
+  if (!isPasswordValid) {
+    throw ApiError.unauthorized('Password is incorrect');
+  }
+
+  // Delete all associated data
+  const Session = require('../models/Session');
+  const Token = require('../models/Token');
+
+  await Promise.all([
+    Session.deleteMany({ userId }),
+    Token.deleteMany({ userId }),
+    ActivityLog.deleteMany({ userId }),
+    User.findByIdAndDelete(userId),
+  ]);
+
+  return { message: 'Account deleted successfully' };
+};
+
+/**
+ * Updates email notification preferences.
+ */
+const updateEmailNotifications = async (userId, enabled) => {
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $set: { emailNotifications: enabled } },
+    { new: true }
+  );
+
+  if (!user) {
+    throw ApiError.notFound('User not found');
+  }
+
+  return { emailNotifications: user.emailNotifications };
 };
 
 module.exports = {
@@ -175,4 +404,9 @@ module.exports = {
   resetPassword,
   logout,
   logoutAll,
+  changePassword,
+  updateProfile,
+  getActivityLog,
+  deleteAccount,
+  updateEmailNotifications,
 };

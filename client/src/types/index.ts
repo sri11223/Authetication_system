@@ -64,3 +64,25 @@ export interface ResetPasswordFormData {
   password: string;
   confirmPassword: string;
 }
+
+export interface ChangePasswordFormData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface UpdateProfileFormData {
+  name: string;
+}
+
+export interface ActivityLog {
+  _id: string;
+  userId: string;
+  type: string;
+  description: string;
+  ip: string;
+  userAgent: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}

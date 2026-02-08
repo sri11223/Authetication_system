@@ -1,4 +1,5 @@
 const sessionService = require('../services/session.service');
+const { ActivityLog, ACTIVITY_TYPES } = require('../models/ActivityLog');
 const asyncHandler = require('../utils/asyncHandler');
 
 const getActiveSessions = asyncHandler(async (req, res) => {
@@ -22,6 +23,15 @@ const getActiveSessions = asyncHandler(async (req, res) => {
 const revokeSession = asyncHandler(async (req, res) => {
   const { sessionId } = req.params;
   await sessionService.revokeSession(sessionId, req.user._id);
+
+  // Log session revocation
+  await ActivityLog.createLog(
+    req.user._id,
+    ACTIVITY_TYPES.SESSION_REVOKED,
+    'Session revoked from security settings',
+    req,
+    { sessionId }
+  );
 
   res.status(200).json({
     success: true,

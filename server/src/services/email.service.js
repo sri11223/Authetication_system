@@ -49,6 +49,58 @@ const EMAIL_TEMPLATES = {
       </div>
     `,
   }),
+
+  securityAlert: (name, event, ip, device, actionLink) => ({
+    subject: `Security Alert: ${event} - Auth System`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); padding: 32px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🔒 Security Alert</h1>
+        </div>
+        <div style="background: #ffffff; padding: 32px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+          <p style="font-size: 16px; color: #334155;">Hi <strong>${name}</strong>,</p>
+          <p style="font-size: 16px; color: #334155;">We detected a security event on your account:</p>
+          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="font-size: 16px; color: #92400e; font-weight: 600; margin: 0 0 8px 0;">${event}</p>
+            ${ip ? `<p style="font-size: 14px; color: #78350f; margin: 4px 0;"><strong>IP Address:</strong> ${ip}</p>` : ''}
+            ${device ? `<p style="font-size: 14px; color: #78350f; margin: 4px 0;"><strong>Device:</strong> ${device}</p>` : ''}
+            <p style="font-size: 14px; color: #78350f; margin: 8px 0 0 0;"><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+          </div>
+          ${actionLink ? `
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${actionLink}" style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
+              Secure My Account
+            </a>
+          </div>
+          ` : ''}
+          <p style="font-size: 14px; color: #64748b;">If this wasn't you, please secure your account immediately by changing your password.</p>
+          <p style="font-size: 14px; color: #64748b;">If this was you, you can safely ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+          <p style="font-size: 12px; color: #94a3b8;">This is an automated security notification from Auth System.</p>
+        </div>
+      </div>
+    `,
+  }),
+
+  accountLocked: (name, unlockTime) => ({
+    subject: 'Account Temporarily Locked - Auth System',
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 32px; border-radius: 12px 12px 0 0; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🔒 Account Locked</h1>
+        </div>
+        <div style="background: #ffffff; padding: 32px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+          <p style="font-size: 16px; color: #334155;">Hi <strong>${name}</strong>,</p>
+          <p style="font-size: 16px; color: #334155;">Your account has been temporarily locked due to multiple failed login attempts.</p>
+          <div style="background: #fee2e2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0; border-radius: 4px;">
+            <p style="font-size: 14px; color: #991b1b; margin: 0;"><strong>Account will unlock at:</strong> ${unlockTime}</p>
+          </div>
+          <p style="font-size: 14px; color: #64748b;">This is a security measure to protect your account. If this wasn't you, please contact support immediately.</p>
+          <p style="font-size: 14px; color: #64748b;">If you forgot your password, you can reset it using the "Forgot Password" feature.</p>
+        </div>
+      </div>
+    `,
+  }),
 };
 
 /**
@@ -85,7 +137,19 @@ const sendPasswordResetEmail = async (email, name, token) => {
   await sendEmail(email, template);
 };
 
+const sendSecurityAlert = async (email, name, event, ip, device, actionLink = null) => {
+  const template = EMAIL_TEMPLATES.securityAlert(name, event, ip, device, actionLink);
+  await sendEmail(email, template);
+};
+
+const sendAccountLockedEmail = async (email, name, unlockTime) => {
+  const template = EMAIL_TEMPLATES.accountLocked(name, unlockTime);
+  await sendEmail(email, template);
+};
+
 module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,
+  sendSecurityAlert,
+  sendAccountLockedEmail,
 };

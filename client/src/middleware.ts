@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const PUBLIC_ROUTES = ['/', '/login', '/register', '/verify-email', '/forgot-password', '/reset-password'];
-const PROTECTED_ROUTES = ['/dashboard', '/sessions'];
+const PROTECTED_ROUTES = ['/dashboard', '/sessions', '/security'];
 const AUTH_ROUTES = ['/login', '/register'];
 
 export function middleware(request: NextRequest) {
@@ -33,5 +33,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/sessions/:path*', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/sessions/:path*', '/security/:path*', '/login', '/register'],
 };

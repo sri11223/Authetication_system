@@ -136,7 +136,7 @@ const logout = asyncHandler(async (req, res) => {
   // Try to logout, but clear cookie even if it fails
   try {
     if (req.sessionId && req.user?._id) {
-      await authService.logout(req.sessionId, req.user._id);
+      await authService.logout(req.sessionId, req.user._id, req);
     }
   } catch (error) {
     // Session might already be revoked, but we still clear the cookie
@@ -161,7 +161,7 @@ const logoutAll = asyncHandler(async (req, res) => {
   // Try to logout all, but clear cookie even if it fails
   try {
     if (req.user?._id) {
-      await authService.logoutAll(req.user._id);
+      await authService.logoutAll(req.user._id, req);
     }
   } catch (error) {
     // Session might already be revoked, but we still clear the cookie
@@ -179,6 +179,75 @@ const logoutAll = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Logged out from all devices',
+  });
+});
+
+const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const result = await authService.changePassword(req.user._id, currentPassword, newPassword);
+
+  // Clear refresh token cookie (all sessions invalidated)
+  res.clearCookie('refreshToken', { 
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+
+  res.status(200).json({
+    success: true,
+    message: result.message,
+  });
+});
+
+const updateProfile = asyncHandler(async (req, res) => {
+  const result = await authService.updateProfile(req.user._id, req.body);
+
+  res.status(200).json({
+    success: true,
+    message: 'Profile updated successfully',
+    data: result,
+  });
+});
+
+const getActivityLog = asyncHandler(async (req, res) => {
+  const { limit = 50 } = req.query;
+  const activities = await authService.getActivityLog(req.user._id, parseInt(limit, 10));
+
+  res.status(200).json({
+    success: true,
+    data: {
+      activities,
+      total: activities.length,
+    },
+  });
+});
+
+const deleteAccount = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const result = await authService.deleteAccount(req.user._id, password);
+
+  // Clear refresh token cookie
+  res.clearCookie('refreshToken', { 
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+
+  res.status(200).json({
+    success: true,
+    message: result.message,
+  });
+});
+
+const updateEmailNotifications = asyncHandler(async (req, res) => {
+  const { enabled } = req.body;
+  const result = await authService.updateEmailNotifications(req.user._id, enabled);
+
+  res.status(200).json({
+    success: true,
+    data: result,
   });
 });
 
@@ -209,4 +278,9 @@ module.exports = {
   logout,
   logoutAll,
   getMe,
+  changePassword,
+  updateProfile,
+  getActivityLog,
+  deleteAccount,
+  updateEmailNotifications,
 };

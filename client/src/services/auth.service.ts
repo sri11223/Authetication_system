@@ -1,5 +1,5 @@
 import apiClient from '@/lib/axios';
-import { ApiResponse, LoginResponse, User } from '@/types';
+import { ApiResponse, LoginResponse, User, ActivityLog } from '@/types';
 import { getClientPublicIp } from '@/utils/ip';
 
 export const authService = {
@@ -63,6 +63,36 @@ export const authService = {
 
   refreshToken: async () => {
     const response = await apiClient.post<ApiResponse<{ accessToken: string }>>('/auth/refresh-token');
+    return response.data;
+  },
+
+  changePassword: async (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+    const response = await apiClient.post<ApiResponse>('/auth/change-password', data);
+    return response.data;
+  },
+
+  updateProfile: async (data: { name: string }) => {
+    const response = await apiClient.patch<ApiResponse<{ user: User }>>('/auth/profile', data);
+    return response.data;
+  },
+
+  getActivityLog: async (limit = 50) => {
+    const response = await apiClient.get<ApiResponse<{ activities: ActivityLog[]; total: number }>>(
+      `/auth/activity?limit=${limit}`
+    );
+    return response.data;
+  },
+
+  deleteAccount: async (password: string) => {
+    const response = await apiClient.delete<ApiResponse>('/auth/account', { data: { password } });
+    return response.data;
+  },
+
+  updateEmailNotifications: async (enabled: boolean) => {
+    const response = await apiClient.patch<ApiResponse<{ emailNotifications: boolean }>>(
+      '/auth/email-notifications',
+      { enabled }
+    );
     return response.data;
   },
 };

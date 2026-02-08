@@ -6,7 +6,8 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/constants/routes';
 import { Button } from '@/components/ui/Button';
-import { Shield, Menu, X, LogOut, Monitor, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { Shield, Menu, X, LogOut, Monitor, LayoutDashboard, ChevronDown, Settings, Moon, Sun } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 
 interface NavbarProps {
   variant?: 'default' | 'transparent';
@@ -14,6 +15,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ variant = 'default' }) => {
   const { user, isAuthenticated, logout, logoutAll } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const pathname = usePathname();
@@ -31,8 +33,8 @@ export const Navbar: React.FC<NavbarProps> = ({ variant = 'default' }) => {
     <nav
       className={`sticky top-0 z-40 transition-all duration-300 ${
         variant === 'transparent'
-          ? 'bg-white/80 backdrop-blur-xl border-b border-surface-200/50'
-          : 'bg-white border-b border-surface-200 shadow-sm'
+          ? 'bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl border-b border-surface-200/50 dark:border-surface-700/50'
+          : 'bg-white dark:bg-surface-800 border-b border-surface-200 dark:border-surface-700 shadow-sm'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -59,8 +61,20 @@ export const Navbar: React.FC<NavbarProps> = ({ variant = 'default' }) => {
                   <Monitor className="w-4 h-4" />
                   Sessions
                 </Link>
+                <Link href={ROUTES.SECURITY} className={navLinkClass(ROUTES.SECURITY)}>
+                  <Settings className="w-4 h-4" />
+                  Security
+                </Link>
 
-                <div className="w-px h-6 bg-surface-200 mx-2" />
+                <button
+                  onClick={toggleTheme}
+                  className="p-2 rounded-xl text-surface-600 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
+                  aria-label="Toggle theme"
+                >
+                  {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+
+                <div className="w-px h-6 bg-surface-200 dark:bg-surface-700 mx-2" />
 
                 {/* Profile dropdown */}
                 <div className="relative">
@@ -91,6 +105,14 @@ export const Navbar: React.FC<NavbarProps> = ({ variant = 'default' }) => {
                           >
                             <Monitor className="w-4 h-4" />
                             Manage Sessions
+                          </Link>
+                          <Link
+                            href={ROUTES.SECURITY}
+                            onClick={() => setIsProfileOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-surface-600 hover:bg-surface-50 transition-colors"
+                          >
+                            <Settings className="w-4 h-4" />
+                            Security Settings
                           </Link>
                         </div>
                         <div className="border-t border-surface-100 py-1">
@@ -166,6 +188,14 @@ export const Navbar: React.FC<NavbarProps> = ({ variant = 'default' }) => {
                 >
                   <Monitor className="w-4 h-4" />
                   Sessions
+                </Link>
+                <Link
+                  href={ROUTES.SECURITY}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm ${isActive(ROUTES.SECURITY) ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-surface-700 hover:bg-surface-100'}`}
+                >
+                  <Settings className="w-4 h-4" />
+                  Security
                 </Link>
                 <hr className="border-surface-200 my-2" />
                 <button

@@ -224,6 +224,15 @@ function DashboardContent() {
                     <ArrowRight className="w-4 h-4 text-surface-400" />
                   </Button>
                 </Link>
+                <Link href={ROUTES.SECURITY}>
+                  <Button variant="outline" fullWidth className="justify-between h-12">
+                    <span className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-primary-600" />
+                      Security Settings
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-surface-400" />
+                  </Button>
+                </Link>
               </div>
             </Card>
 

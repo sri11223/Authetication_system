@@ -8,6 +8,10 @@ const {
   forgotPasswordSchema,
   resetPasswordSchema,
   verifyEmailSchema,
+  changePasswordSchema,
+  updateProfileSchema,
+  deleteAccountSchema,
+  updateEmailNotificationsSchema,
 } = require('../validators/auth.validator');
 const {
   authLimiter,
@@ -32,5 +36,10 @@ router.get('/me', authenticate, authController.getMe);
 // Logout uses optional auth - works even if session is invalid (to clear cookie)
 router.post('/logout', optionalAuthenticate, authController.logout);
 router.post('/logout-all', authenticate, authController.logoutAll);
+router.post('/change-password', authenticate, validate(changePasswordSchema), authController.changePassword);
+router.patch('/profile', authenticate, validate(updateProfileSchema), authController.updateProfile);
+router.get('/activity', authenticate, authController.getActivityLog);
+router.delete('/account', authenticate, validate(deleteAccountSchema), authController.deleteAccount);
+router.patch('/email-notifications', authenticate, validate(updateEmailNotificationsSchema), authController.updateEmailNotifications);
 
 module.exports = router;
