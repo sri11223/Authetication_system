@@ -12,7 +12,8 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ requires2FA?: boolean; userId?: string } | void>;
+  loginWith2FA: (userId: string, token: string) => Promise<void>;
   register: (name: string, email: string, password: string, confirmPassword: string) => Promise<string>;
   logout: () => Promise<void>;
   logoutAll: () => Promise<void>;
@@ -38,6 +39,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const token = localStorage.getItem(ACCESS_TOKEN_KEY);
       if (!token) {
+        // Don't clear cookies if we're on a public page (login/register)
+        // Just clear local state
+        if (pathname && (pathname.startsWith('/login') || pathname.startsWith('/register') || pathname === '/')) {
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+        // Only clear cookies if we're on a protected route
         await clearAuth();
         setIsLoading(false);
         return;
@@ -47,18 +56,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.success && response.data) {
         setUser(response.data.user);
       } else {
-        await clearAuth();
+        // Only clear cookies if we're not on a public page
+        if (pathname && !pathname.startsWith('/login') && !pathname.startsWith('/register') && pathname !== '/') {
+          await clearAuth();
+        } else {
+          setUser(null);
+        }
       }
     } catch (error: any) {
       // If 401, session is invalid
       if (error?.response?.status === 401) {
-        await clearAuth();
-        // Only redirect if on protected route
-        if (pathname && !pathname.startsWith('/login') && !pathname.startsWith('/register')) {
+        // Only clear cookies and redirect if on protected route
+        if (pathname && !pathname.startsWith('/login') && !pathname.startsWith('/register') && pathname !== '/') {
+          await clearAuth();
           router.push(ROUTES.LOGIN);
+        } else {
+          // Just clear local state on public pages
+          setUser(null);
         }
       } else {
-        await clearAuth();
+        // Only clear cookies if not on public page
+        if (pathname && !pathname.startsWith('/login') && !pathname.startsWith('/register') && pathname !== '/') {
+          await clearAuth();
+        } else {
+          setUser(null);
+        }
       }
     } finally {
       setIsLoading(false);
@@ -79,9 +101,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [clearAuth, pathname, router]);
 
   // Check auth on mount and when pathname changes
+  // But skip if we're on a public page (login/register) to avoid unnecessary API calls
   useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
+    // Only check auth if we're not on a public page
+    if (pathname && !pathname.startsWith('/login') && !pathname.startsWith('/register') && pathname !== '/') {
+      refreshUser();
+    } else {
+      // On public pages, just check if we have a token and set loading to false
+      const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+      if (!token) {
+        setUser(null);
+      }
+      setIsLoading(false);
+    }
+  }, [pathname]); // Use pathname instead of refreshUser to prevent infinite loops
 
   // Check auth when page becomes visible (user switches tabs/windows)
   useEffect(() => {
@@ -109,12 +142,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user, refreshUser, pathname]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const response = await authService.login({ email, password });
+    try {
+      const response = await authService.login({ email, password });
 
-    if (response.success && response.data) {
-      localStorage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
-      setUser(response.data.user);
-      router.push(ROUTES.DASHBOARD);
+      // Check if 2FA is required (response.requires2FA is a top-level property)
+      if (response.requires2FA && response.data?.userId) {
+        return { requires2FA: true, userId: response.data.userId };
+      }
+
+      // Normal login success
+      if (response.success && response.data) {
+        localStorage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
+        setUser(response.data.user);
+        router.push(ROUTES.DASHBOARD);
+        return; // Success, no error
+      }
+
+      // If we get here, something unexpected happened
+      throw new Error(response.message || 'Login failed. Please try again.');
+    } catch (error: any) {
+      // Extract error message from various possible formats
+      let errorMessage = 'Something went wrong. Please try again.';
+      
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+        errorMessage = error.response.data.errors[0];
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      // Re-throw the error so useForm can catch it
+      throw new Error(errorMessage);
+    }
+  }, [router]);
+
+  const loginWith2FA = useCallback(async (userId: string, token: string) => {
+    try {
+      const response = await authService.loginWith2FA({ userId, token });
+
+      if (response.success && response.data) {
+        localStorage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
+        setUser(response.data.user);
+        router.push(ROUTES.DASHBOARD);
+      } else {
+        throw new Error(response.message || '2FA verification failed. Please try again.');
+      }
+    } catch (error: any) {
+      // Re-throw the error so it can be caught by the component
+      const errorMessage = error?.response?.data?.message || error?.message || 'Invalid 2FA token. Please try again.';
+      throw new Error(errorMessage);
     }
   }, [router]);
 
@@ -155,6 +232,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading,
     isAuthenticated: !!user,
     login,
+    loginWith2FA,
     register,
     logout,
     logoutAll,

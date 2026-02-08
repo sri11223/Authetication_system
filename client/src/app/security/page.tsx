@@ -30,7 +30,7 @@ import {
   ToggleRight,
 } from 'lucide-react';
 
-type TabType = 'password' | 'profile' | 'activity' | 'settings';
+type TabType = 'password' | 'profile' | 'activity' | 'settings' | 'twofactor';
 
 export default function SecurityPage() {
   return (
@@ -66,6 +66,7 @@ function SecurityContent() {
           {[
             { id: 'password' as TabType, label: 'Change Password', icon: Key },
             { id: 'profile' as TabType, label: 'Update Profile', icon: User },
+            { id: 'twofactor' as TabType, label: 'Two-Factor Auth', icon: Shield },
             { id: 'activity' as TabType, label: 'Activity Log', icon: History },
             { id: 'settings' as TabType, label: 'Settings', icon: Settings },
           ].map((tab) => {
@@ -90,6 +91,7 @@ function SecurityContent() {
         {/* Tab Content */}
         {activeTab === 'password' && <ChangePasswordTab />}
         {activeTab === 'profile' && <UpdateProfileTab user={user} onUpdate={refreshUser} />}
+        {activeTab === 'twofactor' && <TwoFactorTab user={user} onUpdate={refreshUser} />}
         {activeTab === 'activity' && <ActivityLogTab />}
         {activeTab === 'settings' && <SettingsTab user={user} onUpdate={refreshUser} />}
       </main>

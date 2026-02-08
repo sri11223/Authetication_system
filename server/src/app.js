@@ -20,7 +20,7 @@ app.use(cors({
   origin: env.CLIENT_URL,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-client-real-ip'],
 }));
 
 // Request parsing
@@ -36,11 +36,32 @@ app.use(requestIp.mw({
 }));
 
 // Trust proxy (important for getting real IP behind reverse proxy/load balancer)
-app.set('trust proxy', true);
+// Set to 1 to trust only the first proxy (more secure than 'true')
+// In production behind a load balancer, set this to the number of proxies
+app.set('trust proxy', env.TRUST_PROXY ? 1 : false);
 
 // Logging
 if (env.isDevelopment()) {
   app.use(morgan('dev'));
+  // Additional request logging in development
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      const logData = {
+        method: req.method,
+        path: req.path,
+        origin: req.headers.origin,
+        'x-client-real-ip': req.headers['x-client-real-ip'],
+        ip: req.clientIp || req.ip,
+      };
+      if (req.method !== 'GET' && req.body) {
+        // Log body keys but not sensitive data
+        logData.bodyKeys = Object.keys(req.body);
+        if (req.body.email) logData.email = req.body.email;
+      }
+      console.log(`[Request] ${req.method} ${req.path}`, logData);
+    }
+    next();
+  });
 } else {
   app.use(morgan('combined'));
 }

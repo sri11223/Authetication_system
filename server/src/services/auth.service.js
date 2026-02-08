@@ -8,6 +8,7 @@ const {
   sendSecurityAlert,
   sendAccountLockedEmail,
 } = require('./email.service');
+const twoFactorService = require('./twoFactor.service');
 const sessionService = require('./session.service');
 const ApiError = require('../utils/ApiError');
 
@@ -15,12 +16,31 @@ const ApiError = require('../utils/ApiError');
  * Registers a new user, sends verification email.
  */
 const register = async ({ name, email, password }) => {
+  console.log('[AuthService] Register attempt:', { email, passwordLength: password?.length });
+  
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     throw ApiError.conflict('An account with this email already exists');
   }
 
+  console.log('[AuthService] Creating user with password (will be hashed by pre-save hook)...');
   const user = await User.create({ name, email, password });
+  
+  console.log('[AuthService] User created:', {
+    id: user._id,
+    email: user.email,
+    hasPassword: !!user.password,
+    passwordHashLength: user.password?.length,
+  });
+  
+  // Verify the password was hashed correctly by testing it
+  if (user.password) {
+    const testComparison = await user.comparePassword(password);
+    console.log('[AuthService] Password verification test after registration:', testComparison);
+    if (!testComparison) {
+      console.error('[AuthService] ⚠️ WARNING: Password hash verification failed immediately after registration!');
+    }
+  }
 
   // Generate verification token and send email
   const verificationToken = await createActionToken(user._id, TOKEN_TYPES.EMAIL_VERIFICATION);
@@ -71,12 +91,22 @@ const verifyEmail = async (rawToken) => {
  * Authenticates a user and creates a session.
  */
 const login = async ({ email, password }, req) => {
+  console.log('[AuthService] Login attempt for email:', email);
+  
   // Find user with password field included
   const user = await User.findOne({ email }).select('+password');
 
   if (!user) {
+    console.log('[AuthService] User not found for email:', email);
     throw ApiError.unauthorized('Invalid email or password');
   }
+
+  console.log('[AuthService] User found:', {
+    id: user._id,
+    email: user.email,
+    isEmailVerified: user.isEmailVerified,
+    isLocked: user.isAccountLocked(),
+  });
 
   // Check if account is locked
   if (user.isAccountLocked()) {
@@ -86,8 +116,13 @@ const login = async ({ email, password }, req) => {
     );
   }
 
+  console.log('[AuthService] Comparing password...');
   const isPasswordValid = await user.comparePassword(password);
+  console.log('[AuthService] Password comparison result:', isPasswordValid);
+  
   if (!isPasswordValid) {
+    console.log('[AuthService] Invalid password for user:', user.email);
+    console.log('[AuthService] Failed login attempts before increment:', user.failedLoginAttempts);
     // Increment failed login attempts
     await user.incLoginAttempts();
     
@@ -101,13 +136,27 @@ const login = async ({ email, password }, req) => {
     throw ApiError.unauthorized('Invalid email or password');
   }
 
+  console.log('[AuthService] Password valid for user:', user.email);
+
   // Reset failed login attempts on successful login
   if (user.failedLoginAttempts > 0) {
     await user.resetLoginAttempts();
   }
 
   if (!user.isEmailVerified) {
+    console.log('[AuthService] Email not verified for user:', user.email);
     throw ApiError.forbidden('Please verify your email before logging in');
+  }
+
+  // Check if 2FA is enabled - if so, require 2FA token
+  const userWith2FA = await User.findById(user._id).select('+twoFactorEnabled');
+  if (userWith2FA.twoFactorEnabled) {
+    // Return a flag indicating 2FA is required
+    return {
+      requires2FA: true,
+      userId: user._id,
+      message: '2FA verification required',
+    };
   }
 
   // Create session with race-condition protection
@@ -279,6 +328,12 @@ const changePassword = async (userId, currentPassword, newPassword) => {
     throw ApiError.unauthorized('Current password is incorrect');
   }
 
+  // Check if password was used before
+  const hasUsed = await user.hasUsedPassword(newPassword);
+  if (hasUsed) {
+    throw ApiError.badRequest('You cannot reuse your last 3 passwords. Please choose a different password.');
+  }
+
   user.password = newPassword;
   await user.save();
 
@@ -307,6 +362,56 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   }
 
   return { message: 'Password changed successfully. Please log in again' };
+};
+
+/**
+ * Completes login with 2FA verification.
+ */
+const loginWith2FA = async (userId, token, req) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw ApiError.notFound('User not found');
+  }
+
+  // Verify 2FA token
+  await twoFactorService.verify2FALogin(userId, token);
+
+  // Create session
+  const { session, tokens } = await sessionService.createSession(user._id, req);
+
+  // Log login activity
+  await ActivityLog.createLog(
+    user._id,
+    ACTIVITY_TYPES.LOGIN,
+    `Logged in with 2FA from ${req.useragent?.browser || 'Unknown'} on ${req.useragent?.os || 'Unknown'}`,
+    req,
+    { sessionId: session._id, twoFactor: true }
+  );
+
+  // Send security alert if notifications enabled
+  if (user.emailNotifications) {
+    const deviceInfo = `${req.useragent?.browser || 'Unknown'} on ${req.useragent?.os || 'Unknown'}`;
+    const ip = req.clientIp || req.ip || 'Unknown';
+    await sendSecurityAlert(
+      user.email,
+      user.name,
+      'New Login with 2FA',
+      ip,
+      deviceInfo,
+      `${process.env.CLIENT_URL || ''}/sessions`
+    );
+  }
+
+  return {
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      isEmailVerified: user.isEmailVerified,
+    },
+    tokens,
+    sessionId: session._id,
+  };
 };
 
 /**
@@ -399,6 +504,7 @@ module.exports = {
   register,
   verifyEmail,
   login,
+  loginWith2FA,
   resendVerification,
   forgotPassword,
   resetPassword,

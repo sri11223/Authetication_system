@@ -96,6 +96,31 @@ const updateEmailNotificationsSchema = Joi.object({
   }),
 });
 
+const login2FASchema = Joi.object({
+  userId: Joi.string().required().messages({
+    'any.required': 'User ID is required',
+  }),
+  token: Joi.string().length(6).pattern(/^\d+$/).required().messages({
+    'string.length': '2FA token must be 6 digits',
+    'string.pattern.base': '2FA token must contain only numbers',
+    'any.required': '2FA token is required',
+  }),
+});
+
+const enable2FASchema = Joi.object({
+  token: Joi.string().length(6).pattern(/^\d+$/).required().messages({
+    'string.length': '2FA token must be 6 digits',
+    'string.pattern.base': '2FA token must contain only numbers',
+    'any.required': '2FA token is required',
+  }),
+});
+
+const disable2FASchema = Joi.object({
+  password: Joi.string().required().messages({
+    'any.required': 'Password is required',
+  }),
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
@@ -106,4 +131,7 @@ module.exports = {
   updateProfileSchema,
   deleteAccountSchema,
   updateEmailNotificationsSchema,
+  login2FASchema,
+  enable2FASchema,
+  disable2FASchema,
 };

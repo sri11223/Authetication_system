@@ -9,12 +9,16 @@ export const authService = {
   },
 
   login: async (data: { email: string; password: string }) => {
+    console.log('[AuthService] Login attempt for:', data.email);
+    console.log('[AuthService] API Base URL:', process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api');
+    
     // Try to get real public IP and send it to backend for better IP detection
     let realIp: string | null = null;
     try {
       realIp = await getClientPublicIp();
-    } catch {
-      // Ignore errors, continue without real IP
+      console.log('[AuthService] Client IP detected:', realIp);
+    } catch (error) {
+      console.warn('[AuthService] Failed to get client IP:', error);
     }
 
     const headers: Record<string, string> = {};
@@ -22,8 +26,18 @@ export const authService = {
       headers['x-client-real-ip'] = realIp;
     }
 
-    const response = await apiClient.post<ApiResponse<LoginResponse>>('/auth/login', data, { headers });
-    return response.data;
+    try {
+      console.log('[AuthService] Sending login request to /auth/login');
+      const response = await apiClient.post<ApiResponse<LoginResponse> & { requires2FA?: boolean; data?: { userId?: string } }>('/auth/login', data, { headers });
+      console.log('[AuthService] Login response received:', response.status);
+      return response.data;
+    } catch (error: any) {
+      console.error('[AuthService] Login error:', error);
+      console.error('[AuthService] Error response:', error?.response?.data);
+      console.error('[AuthService] Error status:', error?.response?.status);
+      // Re-throw with proper error message
+      throw error;
+    }
   },
 
   verifyEmail: async (token: string) => {
@@ -93,6 +107,28 @@ export const authService = {
       '/auth/email-notifications',
       { enabled }
     );
+    return response.data;
+  },
+
+  loginWith2FA: async (data: { userId: string; token: string }) => {
+    const response = await apiClient.post<ApiResponse<LoginResponse>>('/auth/login-2fa', data);
+    return response.data;
+  },
+
+  generate2FASecret: async () => {
+    const response = await apiClient.get<ApiResponse<{ secret: string; qrCode: string; manualEntryKey: string }>>(
+      '/auth/2fa/secret'
+    );
+    return response.data;
+  },
+
+  enable2FA: async (token: string) => {
+    const response = await apiClient.post<ApiResponse<{ backupCodes: string[] }>>('/auth/2fa/enable', { token });
+    return response.data;
+  },
+
+  disable2FA: async (password: string) => {
+    const response = await apiClient.post<ApiResponse>('/auth/2fa/disable', { password });
     return response.data;
   },
 };

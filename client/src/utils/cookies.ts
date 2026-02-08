@@ -8,7 +8,15 @@
  * Clears the refresh token cookie by calling the backend
  * This works even if the session is invalid (public endpoint)
  */
+let isClearingCookie = false;
+
 export const clearRefreshTokenCookie = async (): Promise<void> => {
+  // Prevent multiple simultaneous calls
+  if (isClearingCookie) {
+    return;
+  }
+
+  isClearingCookie = true;
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   
   try {
@@ -35,6 +43,8 @@ export const clearRefreshTokenCookie = async (): Promise<void> => {
       // The cookie might still be cleared by the browser on redirect
       console.warn('Failed to clear refresh token cookie:', error);
     }
+  } finally {
+    isClearingCookie = false;
   }
 };
 

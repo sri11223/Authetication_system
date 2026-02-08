@@ -56,6 +56,33 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    twoFactorSecret: {
+      type: String,
+      select: false,
+      default: null,
+    },
+    twoFactorBackupCodes: {
+      type: [String],
+      select: false,
+      default: [],
+    },
+    passwordHistory: {
+      type: [String],
+      select: false,
+      default: [],
+    },
+    trustedDevices: [
+      {
+        deviceFingerprint: String,
+        deviceName: String,
+        trustedUntil: Date,
+        createdAt: Date,
+      },
+    ],
   },
   {
     timestamps: true,
@@ -72,10 +99,39 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ email: 1 }, { unique: true });
 
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password')) {
+    return next();
+  }
 
+  // If this is an existing user changing password, we need to get the old hash first
+  if (!this.isNew) {
+    try {
+      const oldUser = await this.constructor.findById(this._id).select('+password');
+      if (oldUser && oldUser.password) {
+        // Store old password hash in history (keep last 3)
+        this.passwordHistory = [oldUser.password, ...(this.passwordHistory || [])].slice(0, 3);
+      }
+    } catch (error) {
+      console.warn('[User.pre-save] Could not retrieve old password for history:', error.message);
+    }
+  }
+
+  // Hash the new password
+  console.log('[User.pre-save] Hashing password...', {
+    isNew: this.isNew,
+    email: this.email,
+    originalPasswordLength: this.password?.length,
+  });
+  
   const salt = await bcrypt.genSalt(env.BCRYPT_SALT_ROUNDS);
-  this.password = await bcrypt.hash(this.password, salt);
+  const hashedPassword = await bcrypt.hash(this.password, salt);
+  
+  console.log('[User.pre-save] Password hashed:', {
+    hashedLength: hashedPassword?.length,
+    hashPrefix: hashedPassword?.substring(0, 15),
+  });
+  
+  this.password = hashedPassword;
 
   if (!this.isNew) {
     this.passwordChangedAt = new Date();
@@ -84,8 +140,41 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
+userSchema.methods.hasUsedPassword = async function (candidatePassword) {
+  // Check current password
+  if (await bcrypt.compare(candidatePassword, this.password)) {
+    return true;
+  }
+
+  // Check password history
+  for (const oldHash of this.passwordHistory || []) {
+    if (await bcrypt.compare(candidatePassword, oldHash)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  if (!this.password) {
+    console.log('[User.comparePassword] No password hash found in user document');
+    return false;
+  }
+  
+  if (!candidatePassword) {
+    console.log('[User.comparePassword] No candidate password provided');
+    return false;
+  }
+  
+  const result = await bcrypt.compare(candidatePassword, this.password);
+  console.log('[User.comparePassword] Comparison result:', result, {
+    hasPasswordHash: !!this.password,
+    passwordHashLength: this.password?.length,
+    candidatePasswordLength: candidatePassword?.length,
+  });
+  
+  return result;
 };
 
 userSchema.methods.hasPasswordChangedAfter = function (jwtTimestamp) {

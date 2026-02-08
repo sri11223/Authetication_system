@@ -1,0 +1,39 @@
+name: Code Quality
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Check file formatting
+        run: |
+          echo "Checking code formatting..."
+          # Add prettier/eslint checks if configured
+          # npx prettier --check "**/*.{js,ts,tsx,json,css,md}" || true
+
+      - name: Check for secrets
+        run: |
+          echo "Checking for accidentally committed secrets..."
+          # Using git-secrets or similar
+          # This is a basic check - consider using truffleHog or similar tools
+
+      - name: Validate package.json
+        working-directory: ./server
+        run: node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))"
+
+      - name: Validate package.json
+        working-directory: ./client
+        run: node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))"

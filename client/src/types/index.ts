@@ -4,6 +4,8 @@ export interface User {
   email: string;
   isEmailVerified: boolean;
   createdAt?: string;
+  twoFactorEnabled?: boolean;
+  emailNotifications?: boolean;
 }
 
 export interface DeviceInfo {

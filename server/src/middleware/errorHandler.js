@@ -40,8 +40,12 @@ const errorHandler = (err, req, res, _next) => {
     ...(env.isDevelopment() && { stack: err.stack }),
   };
 
-  if (statusCode >= 500) {
-    console.error(`[Error] ${statusCode} - ${message}`, err.stack);
+  // Log all errors in development, or server errors in production
+  if (env.isDevelopment() || statusCode >= 500) {
+    console.error(`[Error] ${statusCode} ${req.method} ${req.path} - ${message}`);
+    if (env.isDevelopment()) {
+      console.error('[Error] Stack:', err.stack);
+    }
   }
 
   res.status(statusCode).json(response);

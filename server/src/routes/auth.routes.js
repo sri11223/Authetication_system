@@ -12,6 +12,9 @@ const {
   updateProfileSchema,
   deleteAccountSchema,
   updateEmailNotificationsSchema,
+  login2FASchema,
+  enable2FASchema,
+  disable2FASchema,
 } = require('../validators/auth.validator');
 const {
   authLimiter,
@@ -41,5 +44,9 @@ router.patch('/profile', authenticate, validate(updateProfileSchema), authContro
 router.get('/activity', authenticate, authController.getActivityLog);
 router.delete('/account', authenticate, validate(deleteAccountSchema), authController.deleteAccount);
 router.patch('/email-notifications', authenticate, validate(updateEmailNotificationsSchema), authController.updateEmailNotifications);
+router.post('/login-2fa', validate(login2FASchema), authController.loginWith2FA);
+router.get('/2fa/secret', authenticate, authController.generate2FASecret);
+router.post('/2fa/enable', authenticate, validate(enable2FASchema), authController.enable2FA);
+router.post('/2fa/disable', authenticate, validate(disable2FASchema), authController.disable2FA);
 
 module.exports = router;

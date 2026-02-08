@@ -19,9 +19,16 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+    // Log request in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Axios] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.data || '');
+    }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('[Axios] Request error:', error);
+    return Promise.reject(error);
+  }
 );
 
 // Response interceptor: handle token refresh
@@ -62,16 +69,30 @@ const clearAuthAndRedirect = async () => {
 };
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log successful responses in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Axios] Response ${response.status} ${response.config.url}`);
+    }
+    return response;
+  },
   async (error: AxiosError) => {
+    // Log errors in development
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`[Axios] Error ${error.response?.status || 'NETWORK'} ${error.config?.url}`, error.response?.data || error.message);
+    }
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     // Handle 401 errors (unauthorized)
     if (error.response?.status === 401) {
-      // If it's a login/register endpoint, don't try to refresh
+      // If it's a login/register/clear-cookie endpoint, don't try to refresh or clear cookies
       if (
         originalRequest.url?.includes('/auth/login') ||
-        originalRequest.url?.includes('/auth/register')
+        originalRequest.url?.includes('/auth/register') ||
+        originalRequest.url?.includes('/auth/clear-cookie') ||
+        originalRequest.url?.includes('/auth/forgot-password') ||
+        originalRequest.url?.includes('/auth/reset-password') ||
+        originalRequest.url?.includes('/auth/verify-email')
       ) {
         return Promise.reject(error);
       }

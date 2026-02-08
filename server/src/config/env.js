@@ -23,6 +23,8 @@ const env = {
 
   BCRYPT_SALT_ROUNDS: parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12,
 
+  TRUST_PROXY: process.env.TRUST_PROXY === 'true',
+
   isDevelopment() {
     return this.NODE_ENV === 'development';
   },

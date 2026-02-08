@@ -23,12 +23,60 @@ const verifyEmail = asyncHandler(async (req, res) => {
 });
 
 const login = asyncHandler(async (req, res) => {
+  console.log('[AuthController] Login request received:', {
+    email: req.body.email,
+    hasPassword: !!req.body.password,
+    ip: req.clientIp || req.ip,
+    'x-client-real-ip': req.headers['x-client-real-ip'],
+  });
+
   // If client sends real IP in header, use it for better IP detection
   if (req.headers['x-client-real-ip']) {
     req.headers['x-client-real-ip'] = req.headers['x-client-real-ip'];
   }
 
   const result = await authService.login(req.body, req);
+  
+  console.log('[AuthController] Login result:', {
+    requires2FA: result.requires2FA,
+    success: !result.requires2FA,
+  });
+
+  // Check if 2FA is required
+  if (result.requires2FA) {
+    return res.status(200).json({
+      success: true,
+      requires2FA: true,
+      message: '2FA verification required',
+      data: {
+        userId: result.userId,
+      },
+    });
+  }
+
+  // Set refresh token in HTTP-only cookie
+  res.cookie('refreshToken', result.tokens.refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/',
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Login successful',
+    data: {
+      user: result.user,
+      accessToken: result.tokens.accessToken,
+    },
+  });
+});
+
+const loginWith2FA = asyncHandler(async (req, res) => {
+  const { userId, token } = req.body;
+
+  const result = await authService.loginWith2FA(userId, token, req);
 
   // Set refresh token in HTTP-only cookie
   res.cookie('refreshToken', result.tokens.refreshToken, {
@@ -266,10 +314,62 @@ const getMe = asyncHandler(async (req, res) => {
   });
 });
 
+const generate2FASecret = asyncHandler(async (req, res) => {
+  const twoFactorService = require('../services/twoFactor.service');
+  const result = await twoFactorService.generateSecret(req.user._id, req.user.email);
+
+  res.status(200).json({
+    success: true,
+    data: result,
+  });
+});
+
+const enable2FA = asyncHandler(async (req, res) => {
+  const { token } = req.body;
+  const twoFactorService = require('../services/twoFactor.service');
+  const result = await twoFactorService.enable2FA(req.user._id, token);
+
+  // Log activity
+  const { ActivityLog, ACTIVITY_TYPES } = require('../models/ActivityLog');
+  await ActivityLog.createLog(
+    req.user._id,
+    ACTIVITY_TYPES.PROFILE_UPDATED,
+    'Two-Factor Authentication enabled',
+    req
+  );
+
+  res.status(200).json({
+    success: true,
+    message: '2FA enabled successfully',
+    data: result,
+  });
+});
+
+const disable2FA = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  const twoFactorService = require('../services/twoFactor.service');
+  const result = await twoFactorService.disable2FA(req.user._id, password);
+
+  // Log activity
+  const { ActivityLog, ACTIVITY_TYPES } = require('../models/ActivityLog');
+  await ActivityLog.createLog(
+    req.user._id,
+    ACTIVITY_TYPES.PROFILE_UPDATED,
+    'Two-Factor Authentication disabled',
+    req
+  );
+
+  res.status(200).json({
+    success: true,
+    message: result.message,
+  });
+});
+
 module.exports = {
   register,
   verifyEmail,
   login,
+  loginWith2FA,
   refreshToken,
   resendVerification,
   forgotPassword,
@@ -283,4 +383,7 @@ module.exports = {
   getActivityLog,
   deleteAccount,
   updateEmailNotifications,
+  generate2FASecret,
+  enable2FA,
+  disable2FA,
 };
