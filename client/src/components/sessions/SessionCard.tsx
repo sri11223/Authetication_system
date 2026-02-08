@@ -70,9 +70,11 @@ export const SessionCard: React.FC<SessionCardProps> = ({ session, onRevoke, isR
             <Monitor className="w-3 h-3" />
             {session.deviceInfo.device} &middot; {session.deviceInfo.platform}
           </span>
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1" title={`IP Address: ${session.deviceInfo.ip}`}>
             <MapPin className="w-3 h-3" />
-            {session.deviceInfo.ip}
+            {session.deviceInfo.ip === 'Localhost' || session.deviceInfo.ip === '::1' || session.deviceInfo.ip === '127.0.0.1' 
+              ? 'Localhost' 
+              : session.deviceInfo.ip}
           </span>
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />

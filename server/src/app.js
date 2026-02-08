@@ -30,7 +30,13 @@ app.use(cookieParser());
 
 // Device & IP detection
 app.use(useragent.express());
-app.use(requestIp.mw());
+// Configure request-ip to trust proxy headers
+app.use(requestIp.mw({
+  attributeName: 'clientIp',
+}));
+
+// Trust proxy (important for getting real IP behind reverse proxy/load balancer)
+app.set('trust proxy', true);
 
 // Logging
 if (env.isDevelopment()) {

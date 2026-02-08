@@ -23,6 +23,11 @@ const verifyEmail = asyncHandler(async (req, res) => {
 });
 
 const login = asyncHandler(async (req, res) => {
+  // If client sends real IP in header, use it for better IP detection
+  if (req.headers['x-client-real-ip']) {
+    req.headers['x-client-real-ip'] = req.headers['x-client-real-ip'];
+  }
+
   const result = await authService.login(req.body, req);
 
   // Set refresh token in HTTP-only cookie

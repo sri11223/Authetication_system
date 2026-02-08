@@ -1,5 +1,6 @@
 import apiClient from '@/lib/axios';
 import { ApiResponse, LoginResponse, User } from '@/types';
+import { getClientPublicIp } from '@/utils/ip';
 
 export const authService = {
   register: async (data: { name: string; email: string; password: string; confirmPassword: string }) => {
@@ -8,7 +9,20 @@ export const authService = {
   },
 
   login: async (data: { email: string; password: string }) => {
-    const response = await apiClient.post<ApiResponse<LoginResponse>>('/auth/login', data);
+    // Try to get real public IP and send it to backend for better IP detection
+    let realIp: string | null = null;
+    try {
+      realIp = await getClientPublicIp();
+    } catch {
+      // Ignore errors, continue without real IP
+    }
+
+    const headers: Record<string, string> = {};
+    if (realIp) {
+      headers['x-client-real-ip'] = realIp;
+    }
+
+    const response = await apiClient.post<ApiResponse<LoginResponse>>('/auth/login', data, { headers });
     return response.data;
   },
 
