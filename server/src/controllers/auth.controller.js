@@ -96,7 +96,12 @@ const resetPassword = asyncHandler(async (req, res) => {
   const result = await authService.resetPassword(token, password);
 
   // Clear refresh token cookie
-  res.clearCookie('refreshToken', { path: '/' });
+  res.clearCookie('refreshToken', { 
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
 
   res.status(200).json({
     success: true,
@@ -104,10 +109,42 @@ const resetPassword = asyncHandler(async (req, res) => {
   });
 });
 
-const logout = asyncHandler(async (req, res) => {
-  await authService.logout(req.sessionId, req.user._id);
+/**
+ * Public endpoint to clear refresh token cookie
+ * Used when session is invalid and we need to clear the cookie
+ */
+const clearCookie = asyncHandler(async (req, res) => {
+  res.clearCookie('refreshToken', { 
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
 
-  res.clearCookie('refreshToken', { path: '/' });
+  res.status(200).json({
+    success: true,
+    message: 'Cookie cleared',
+  });
+});
+
+const logout = asyncHandler(async (req, res) => {
+  // Try to logout, but clear cookie even if it fails
+  try {
+    if (req.sessionId && req.user?._id) {
+      await authService.logout(req.sessionId, req.user._id);
+    }
+  } catch (error) {
+    // Session might already be revoked, but we still clear the cookie
+    console.warn('[Logout] Session already invalid, clearing cookie anyway');
+  }
+
+  // Always clear the refresh token cookie
+  res.clearCookie('refreshToken', { 
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
 
   res.status(200).json({
     success: true,
@@ -116,9 +153,23 @@ const logout = asyncHandler(async (req, res) => {
 });
 
 const logoutAll = asyncHandler(async (req, res) => {
-  await authService.logoutAll(req.user._id);
+  // Try to logout all, but clear cookie even if it fails
+  try {
+    if (req.user?._id) {
+      await authService.logoutAll(req.user._id);
+    }
+  } catch (error) {
+    // Session might already be revoked, but we still clear the cookie
+    console.warn('[LogoutAll] Session already invalid, clearing cookie anyway');
+  }
 
-  res.clearCookie('refreshToken', { path: '/' });
+  // Always clear the refresh token cookie
+  res.clearCookie('refreshToken', { 
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
 
   res.status(200).json({
     success: true,
@@ -149,6 +200,7 @@ module.exports = {
   resendVerification,
   forgotPassword,
   resetPassword,
+  clearCookie,
   logout,
   logoutAll,
   getMe,

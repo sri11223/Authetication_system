@@ -58,4 +58,48 @@ const authenticate = asyncHandler(async (req, _res, next) => {
   next();
 });
 
-module.exports = { authenticate };
+/**
+ * Optional authentication - tries to authenticate but doesn't fail if it can't.
+ * Useful for endpoints that need to work even when session is invalid (like logout).
+ */
+const optionalAuthenticate = asyncHandler(async (req, _res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next(); // No token, continue without auth
+    }
+
+    const accessToken = authHeader.split(' ')[1];
+    let decoded;
+
+    try {
+      decoded = jwt.verify(accessToken, env.JWT_ACCESS_SECRET);
+    } catch {
+      return next(); // Invalid token, continue without auth
+    }
+
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return next(); // User not found, continue without auth
+    }
+
+    if (decoded.sessionId) {
+      const session = await Session.findOne({
+        _id: decoded.sessionId,
+        userId: decoded.userId,
+        isActive: true,
+      });
+
+      if (session) {
+        req.sessionId = decoded.sessionId;
+        req.user = user;
+      }
+    }
+  } catch {
+    // Any error, just continue without auth
+  }
+
+  next();
+});
+
+module.exports = { authenticate, optionalAuthenticate };

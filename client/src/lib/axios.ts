@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_BASE_URL, ACCESS_TOKEN_KEY } from '@/constants';
+import { clearRefreshTokenCookie } from '@/utils/cookies';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -41,61 +42,90 @@ const processQueue = (error: AxiosError | null, token: string | null = null) => 
   failedQueue = [];
 };
 
+/**
+ * Clears auth state (localStorage + cookies) and redirects to login
+ */
+const clearAuthAndRedirect = async () => {
+  if (typeof window !== 'undefined') {
+    // Clear localStorage
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    
+    // Clear refresh token cookie (HTTP-only, needs backend call)
+    await clearRefreshTokenCookie();
+    
+    // Dispatch custom event to notify AuthContext
+    window.dispatchEvent(new CustomEvent('auth:logout'));
+    
+    // Force redirect
+    window.location.href = '/login';
+  }
+};
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Only attempt refresh on 401 errors (not on login/register failures)
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url?.includes('/auth/login') &&
-      !originalRequest.url?.includes('/auth/register')
-    ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        })
-          .then((token) => {
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-            }
-            return apiClient(originalRequest);
-          })
-          .catch((err) => Promise.reject(err));
+    // Handle 401 errors (unauthorized)
+    if (error.response?.status === 401) {
+      // If it's a login/register endpoint, don't try to refresh
+      if (
+        originalRequest.url?.includes('/auth/login') ||
+        originalRequest.url?.includes('/auth/register')
+      ) {
+        return Promise.reject(error);
       }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
+      // If refresh token endpoint fails, session is definitely invalid
+      if (originalRequest.url?.includes('/auth/refresh-token')) {
+        await clearAuthAndRedirect();
+        return Promise.reject(error);
+      }
 
-      try {
-        const { data } = await axios.post(
-          `${API_BASE_URL}/auth/refresh-token`,
-          {},
-          { withCredentials: true }
-        );
+      // Try to refresh token
+      if (!originalRequest._retry) {
+        originalRequest._retry = true;
 
-        const newAccessToken = data.data.accessToken;
-        localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
-
-        processQueue(null, newAccessToken);
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        }
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError as AxiosError, null);
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
-
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+        if (isRefreshing) {
+          // Queue this request
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((token) => {
+              if (originalRequest.headers) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+              }
+              return apiClient(originalRequest);
+            })
+            .catch((err) => Promise.reject(err));
         }
 
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+        isRefreshing = true;
+
+        try {
+          const { data } = await axios.post(
+            `${API_BASE_URL}/auth/refresh-token`,
+            {},
+            { withCredentials: true }
+          );
+
+          const newAccessToken = data.data.accessToken;
+          localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
+
+          processQueue(null, newAccessToken);
+
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          }
+          return apiClient(originalRequest);
+        } catch (refreshError) {
+          // Refresh failed - session is invalid
+          processQueue(refreshError as AxiosError, null);
+          await clearAuthAndRedirect();
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
       }
     }
 
