@@ -15,6 +15,11 @@ const createTransporter = () => {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS,
     },
+    // Timouts to fail fast if Render blocks SMTP
+    connectionTimeout: 10000, // 10 seconds
+    socketTimeout: 20000,     // 20 seconds
+    logger: true,
+    debug: true,
   });
 };
 

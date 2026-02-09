@@ -134,7 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
@@ -163,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       // Extract error message from various possible formats
       let errorMessage = 'Something went wrong. Please try again.';
-      
+
       if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
@@ -171,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       // Re-throw the error so useForm can catch it
       throw new Error(errorMessage);
     }
@@ -179,16 +179,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWith2FA = useCallback(async (userId: string, token: string) => {
     try {
+      console.log('[AuthContext] Attempting 2FA login for user:', userId);
       const response = await authService.loginWith2FA({ userId, token });
+      console.log('[AuthContext] 2FA login response:', response);
 
-      if (response.success && response.data) {
-        localStorage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
-        setUser(response.data.user);
-        router.push(ROUTES.DASHBOARD);
+      // Handle both possible response structures (data at root or data inside data)
+      const userData = response.data?.user || (response as any).user;
+      const accessToken = response.data?.accessToken || (response as any).accessToken;
+
+      if (response.success && accessToken) {
+        console.log('[AuthContext] 2FA success, setting token and user');
+        localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+        setUser(userData);
+
+        // Force a small delay to ensure state updates before redirect
+        setTimeout(() => {
+          console.log('[AuthContext] Redirecting to dashboard...');
+          router.push(ROUTES.DASHBOARD);
+        }, 100);
       } else {
+        console.error('[AuthContext] 2FA failed or missing token:', response);
         throw new Error(response.message || '2FA verification failed. Please try again.');
       }
     } catch (error: any) {
+      console.error('[AuthContext] 2FA Error:', error);
       // Re-throw the error so it can be caught by the component
       const errorMessage = error?.response?.data?.message || error?.message || 'Invalid 2FA token. Please try again.';
       throw new Error(errorMessage);
