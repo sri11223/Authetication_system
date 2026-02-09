@@ -10,7 +10,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { useForm } from '@/hooks/useForm';
 import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/constants/routes';
-import { Mail, Lock, ArrowRight, Shield } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Shield, KeyRound } from 'lucide-react';
 
 export default function LoginPage() {
   const { login, loginWith2FA } = useAuth();
@@ -42,7 +42,6 @@ export default function LoginPage() {
         }
       } catch (error) {
         console.error('[LoginPage] Login error caught:', error);
-        // Error will be handled by useForm hook
         throw error;
       }
     },
@@ -67,15 +66,19 @@ export default function LoginPage() {
 
   if (requires2FA) {
     return (
-      <AuthLayout title="Two-Factor Authentication" subtitle="Enter the 6-digit code from your authenticator app">
-        <form onSubmit={handle2FASubmit} className="space-y-5">
-          {twoFactorError && <Alert variant="error" message={twoFactorError} />}
+      <AuthLayout title="Two-Factor Auth" subtitle="Enter the 6-digit code from your authenticator app">
+        <form onSubmit={handle2FASubmit} className="space-y-6">
+          {twoFactorError && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+              {twoFactorError}
+            </div>
+          )}
 
           <div>
-            <label htmlFor="twoFactorToken" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+            <label htmlFor="twoFactorToken" className="block text-sm font-medium text-slate-300 mb-3">
               Authentication Code
             </label>
-            <Input
+            <input
               id="twoFactorToken"
               type="text"
               placeholder="000000"
@@ -86,28 +89,32 @@ export default function LoginPage() {
                 setTwoFactorError('');
               }}
               maxLength={6}
-              className="text-center text-2xl tracking-widest font-mono"
+              className="w-full px-4 py-4 bg-slate-800/50 border border-white/10 rounded-xl text-white text-center text-3xl tracking-[0.5em] font-mono placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
               autoFocus
               autoComplete="one-time-code"
             />
-            <p className="text-xs text-surface-500 dark:text-surface-400 mt-2 text-center">
+            <p className="text-xs text-slate-500 mt-3 text-center">
               Enter the 6-digit code from your authenticator app or use a backup code
             </p>
           </div>
 
-          <Button type="submit" fullWidth isLoading={isSubmitting2FA} size="lg" className="gap-2">
+          <button
+            type="submit"
+            disabled={isSubmitting2FA || twoFactorToken.length !== 6}
+            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg shadow-purple-600/25 transition-all duration-200"
+          >
             {isSubmitting2FA ? (
               <>
-                <Spinner className="w-4 h-4" />
+                <Spinner className="w-5 h-5" />
                 Verifying...
               </>
             ) : (
               <>
-                Verify
-                <Shield className="w-4 h-4" />
+                <Shield className="w-5 h-5" />
+                Verify & Sign In
               </>
             )}
-          </Button>
+          </button>
 
           <button
             type="button"
@@ -117,7 +124,7 @@ export default function LoginPage() {
               setTwoFactorToken('');
               setTwoFactorError('');
             }}
-            className="w-full text-sm text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 transition-colors"
+            className="w-full text-sm text-slate-500 hover:text-slate-300 transition-colors py-2"
           >
             ← Back to login
           </button>
@@ -129,60 +136,101 @@ export default function LoginPage() {
   return (
     <AuthLayout title="Welcome Back" subtitle="Sign in to your account to continue">
       <form onSubmit={form.handleSubmit} className="space-y-5">
-        {form.serverError && <Alert variant="error" message={form.serverError} />}
-
-        <Input
-          label="Email Address"
-          name="email"
-          type="email"
-          placeholder="john@example.com"
-          value={form.values.email}
-          onChange={form.handleChange}
-          error={form.errors.email}
-          icon={<Mail className="w-4 h-4" />}
-          autoComplete="email"
-        />
+        {form.serverError && (
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+            {form.serverError}
+          </div>
+        )}
 
         <div>
-          <Input
-            label="Password"
-            name="password"
-            type="password"
-            placeholder="Enter your password"
-            value={form.values.password}
-            onChange={form.handleChange}
-            error={form.errors.password}
-            icon={<Lock className="w-4 h-4" />}
-            autoComplete="current-password"
-          />
-          <div className="flex justify-end mt-1.5">
+          <label className="block text-sm font-medium text-slate-300 mb-2">
+            Email Address
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Mail className="w-5 h-5 text-slate-500" />
+            </div>
+            <input
+              name="email"
+              type="email"
+              placeholder="john@example.com"
+              value={form.values.email}
+              onChange={form.handleChange}
+              className={`w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border ${form.errors.email ? 'border-red-500/50' : 'border-white/10'} rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all`}
+              autoComplete="email"
+            />
+          </div>
+          {form.errors.email && (
+            <p className="text-red-400 text-sm mt-1.5">{form.errors.email}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-2">
+            Password
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Lock className="w-5 h-5 text-slate-500" />
+            </div>
+            <input
+              name="password"
+              type="password"
+              placeholder="Enter your password"
+              value={form.values.password}
+              onChange={form.handleChange}
+              className={`w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border ${form.errors.password ? 'border-red-500/50' : 'border-white/10'} rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all`}
+              autoComplete="current-password"
+            />
+          </div>
+          {form.errors.password && (
+            <p className="text-red-400 text-sm mt-1.5">{form.errors.password}</p>
+          )}
+          <div className="flex justify-end mt-2">
             <Link
               href={ROUTES.FORGOT_PASSWORD}
-              className="text-sm font-medium text-primary-600 hover:text-primary-500 transition-colors"
+              className="text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors"
             >
               Forgot password?
             </Link>
           </div>
         </div>
 
-        <Button type="submit" fullWidth isLoading={form.isSubmitting} size="lg" className="gap-2">
-          Sign In
-          <ArrowRight className="w-4 h-4" />
-        </Button>
+        <button
+          type="submit"
+          disabled={form.isSubmitting}
+          className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg shadow-purple-600/25 transition-all duration-200"
+        >
+          {form.isSubmitting ? (
+            <>
+              <Spinner className="w-5 h-5" />
+              Signing in...
+            </>
+          ) : (
+            <>
+              Sign In
+              <ArrowRight className="w-5 h-5" />
+            </>
+          )}
+        </button>
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-surface-200" />
+            <div className="w-full border-t border-white/10" />
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="px-4 bg-white text-surface-400 uppercase tracking-wider">New here?</span>
+            <span className="px-4 bg-slate-900 text-slate-500 uppercase tracking-wider">New here?</span>
           </div>
         </div>
 
         <Link href={ROUTES.REGISTER}>
-          <Button variant="outline" fullWidth>
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-medium rounded-xl transition-all duration-200"
+          >
+            <KeyRound className="w-4 h-4" />
             Create Account
-          </Button>
+          </button>
         </Link>
       </form>
     </AuthLayout>

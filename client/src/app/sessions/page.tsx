@@ -5,11 +5,10 @@ import { Navbar } from '@/components/layout/Navbar';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { SessionList } from '@/components/sessions/SessionList';
-import { Alert } from '@/components/ui/Alert';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useSessions } from '@/hooks/useSessions';
-import { Shield, AlertTriangle } from 'lucide-react';
+import { Shield, AlertTriangle, Info } from 'lucide-react';
 
 export default function SessionsPage() {
   return (
@@ -64,34 +63,37 @@ function SessionsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-50">
+    <div className="min-h-screen bg-surface-50 dark:bg-slate-950 transition-colors">
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-surface-900">Active Sessions</h1>
-          <p className="mt-1 text-surface-500">
+          <h1 className="text-3xl font-bold text-surface-900 dark:text-white">Active Sessions</h1>
+          <p className="mt-1 text-surface-500 dark:text-slate-400">
             Manage your active login sessions across all devices
           </p>
         </div>
 
-        <Alert
-          variant="info"
-          message="Sessions are tracked with device fingerprinting. Revoke access from any device you don't recognize to keep your account secure."
-          className="mb-6"
-        />
+        {/* Info Banner */}
+        <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-xl mb-6 flex items-start gap-3">
+          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-700 dark:text-blue-300">
+            Sessions are tracked with device fingerprinting. Revoke access from any device you don't recognize to keep your account secure.
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader
-            title="Logged-in Devices"
-            subtitle="These devices are currently logged into your account"
-            action={
-              <div className="flex items-center gap-2 text-sm text-surface-500">
-                <Shield className="w-4 h-4 text-primary-500" />
-                <span className="hidden sm:inline">Secured by JWT</span>
-              </div>
-            }
-          />
+        {/* Sessions Card */}
+        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-surface-200 dark:border-white/5 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-bold text-surface-900 dark:text-white">Logged-in Devices</h2>
+              <p className="text-sm text-surface-500 dark:text-slate-400">These devices are currently logged into your account</p>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-surface-500 dark:text-slate-400">
+              <Shield className="w-4 h-4 text-purple-500" />
+              <span className="hidden sm:inline">Secured by JWT</span>
+            </div>
+          </div>
 
           <SessionList
             sessions={sessions}
@@ -101,30 +103,31 @@ function SessionsContent() {
             onRevokeAll={handleRevokeAllClick}
             onRefresh={fetchSessions}
           />
-        </Card>
+        </div>
 
-        <div className="mt-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl">
+        {/* Security Info */}
+        <div className="mt-6 p-5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-2xl">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Shield className="w-4 h-4 text-amber-700" />
+            <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Shield className="w-4 h-4 text-purple-400" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-amber-800 mb-2">About Session Security</h3>
-              <ul className="space-y-1.5 text-sm text-amber-700">
+              <h3 className="text-sm font-bold text-surface-900 dark:text-white mb-2">About Session Security</h3>
+              <ul className="space-y-1.5 text-sm text-surface-600 dark:text-slate-400">
                 <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-1.5 flex-shrink-0" />
                   Concurrent logins are handled atomically to prevent duplicate sessions
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-1.5 flex-shrink-0" />
                   Changing your password automatically invalidates all active sessions
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-1.5 flex-shrink-0" />
                   Sessions expire automatically after 7 days of inactivity
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 flex-shrink-0" />
+                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-1.5 flex-shrink-0" />
                   MongoDB transactions ensure data integrity under race conditions
                 </li>
               </ul>
@@ -141,11 +144,11 @@ function SessionsContent() {
         maxWidth="sm"
       >
         <div className="flex flex-col items-center text-center py-2">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-            <AlertTriangle className="w-6 h-6 text-red-600" />
+          <div className="w-12 h-12 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
           </div>
-          <p className="text-sm text-surface-700 mb-1 font-semibold">{confirmModal.title}</p>
-          <p className="text-xs text-surface-500 mb-6">
+          <p className="text-sm text-surface-700 dark:text-white mb-1 font-semibold">{confirmModal.title}</p>
+          <p className="text-xs text-surface-500 dark:text-slate-400 mb-6">
             {confirmModal.type === 'all'
               ? 'This will log you out from all other devices. You will remain logged in on this device only.'
               : 'This device will be immediately logged out and will need to sign in again.'

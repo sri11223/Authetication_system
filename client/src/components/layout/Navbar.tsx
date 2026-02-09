@@ -22,29 +22,37 @@ export const Navbar: React.FC<NavbarProps> = ({ variant = 'default' }) => {
 
   const isActive = (route: string) => pathname === route;
 
+  // Check if we're on the landing page (dark theme)
+  const isLandingPage = pathname === '/';
+  const isDarkNav = variant === 'transparent' && isLandingPage;
+
   const navLinkClass = (route: string) =>
-    `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-      isActive(route)
-        ? 'bg-primary-50 text-primary-700'
+    `flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isActive(route)
+      ? isDarkNav
+        ? 'bg-white/10 text-white'
+        : 'bg-primary-50 text-primary-700'
+      : isDarkNav
+        ? 'text-slate-300 hover:text-white hover:bg-white/10'
         : `${variant === 'transparent' ? 'text-surface-700' : 'text-surface-600'} hover:text-primary-600 hover:bg-primary-50/50`
     }`;
 
   return (
     <nav
-      className={`sticky top-0 z-40 transition-all duration-300 ${
-        variant === 'transparent'
+      className={`sticky top-0 z-40 transition-all duration-300 ${isDarkNav
+        ? 'bg-slate-950/80 backdrop-blur-xl border-b border-white/5'
+        : variant === 'transparent'
           ? 'bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl border-b border-surface-200/50 dark:border-surface-700/50'
           : 'bg-white dark:bg-surface-800 border-b border-surface-200 dark:border-surface-700 shadow-sm'
-      }`}
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href={isAuthenticated ? ROUTES.DASHBOARD : ROUTES.HOME} className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl flex items-center justify-center shadow-md shadow-primary-200/50 group-hover:shadow-lg group-hover:shadow-primary-300/50 transition-shadow duration-300">
+            <div className={`w-9 h-9 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-md ${isDarkNav ? 'shadow-purple-600/30' : 'shadow-primary-200/50'} group-hover:shadow-lg transition-shadow duration-300`}>
               <Shield className="w-5 h-5 text-white" />
             </div>
-            <span className="text-lg font-bold bg-gradient-to-r from-surface-900 to-surface-700 bg-clip-text text-transparent">
+            <span className={`text-lg font-bold ${isDarkNav ? 'text-white' : 'bg-gradient-to-r from-surface-900 to-surface-700 bg-clip-text text-transparent'}`}>
               AuthSystem
             </span>
           </Link>
@@ -139,10 +147,21 @@ export const Navbar: React.FC<NavbarProps> = ({ variant = 'default' }) => {
             ) : (
               <>
                 <Link href={ROUTES.LOGIN}>
-                  <Button variant="ghost" size="sm">Log In</Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={isDarkNav ? 'text-slate-300 hover:text-white hover:bg-white/10' : ''}
+                  >
+                    Log In
+                  </Button>
                 </Link>
                 <Link href={ROUTES.REGISTER}>
-                  <Button size="sm">Sign Up Free</Button>
+                  <Button
+                    size="sm"
+                    className={isDarkNav ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 border-0' : ''}
+                  >
+                    Sign Up Free
+                  </Button>
                 </Link>
               </>
             )}

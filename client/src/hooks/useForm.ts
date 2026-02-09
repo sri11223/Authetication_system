@@ -8,7 +8,7 @@ interface UseFormOptions<T> {
   validate?: (values: T) => Partial<Record<keyof T, string>>;
 }
 
-export function useForm<T extends Record<string, string>>({
+export function useForm<T extends object>({
   initialValues,
   onSubmit,
   validate,
@@ -86,6 +86,7 @@ export function useForm<T extends Record<string, string>>({
     handleChange,
     handleSubmit,
     resetForm,
+    reset: resetForm,
     setServerError,
     setValues,
   };

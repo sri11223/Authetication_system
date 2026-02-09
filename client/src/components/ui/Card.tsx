@@ -21,8 +21,8 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div
       className={`
-        bg-white rounded-xl border border-surface-200
-        shadow-sm
+        bg-white dark:bg-slate-900/50 rounded-xl border border-surface-200 dark:border-white/5
+        shadow-sm dark:shadow-none
         ${PADDING_STYLES[padding]}
         ${className}
       `.trim()}
@@ -42,9 +42,9 @@ export const CardHeader: React.FC<CardHeaderProps> = ({ title, subtitle, action 
   return (
     <div className="flex items-start justify-between mb-6">
       <div>
-        <h2 className="text-xl font-bold text-surface-900">{title}</h2>
+        <h2 className="text-xl font-bold text-surface-900 dark:text-white">{title}</h2>
         {subtitle && (
-          <p className="mt-1 text-sm text-surface-500">{subtitle}</p>
+          <p className="mt-1 text-sm text-surface-500 dark:text-slate-400">{subtitle}</p>
         )}
       </div>
       {action && <div>{action}</div>}
