@@ -3,8 +3,7 @@
 import React from 'react';
 import { Session } from '@/types';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { Monitor, Smartphone, Tablet, Globe, Clock, MapPin } from 'lucide-react';
+import { Monitor, Smartphone, Tablet, Globe, Clock, MapPin, Trash2 } from 'lucide-react';
 
 interface SessionCardProps {
   session: Session;
@@ -39,18 +38,26 @@ export const SessionCard: React.FC<SessionCardProps> = ({ session, onRevoke, isR
   return (
     <div
       className={`
-        flex items-start gap-4 p-4 rounded-xl border transition-all duration-200
+        relative flex items-start gap-4 p-5 rounded-2xl border transition-all duration-300 group
         ${session.isCurrent
-          ? 'border-primary-200 bg-primary-50/50'
-          : 'border-surface-200 bg-white hover:border-surface-300'
+          ? 'border-purple-500/30 bg-gradient-to-r from-purple-500/5 to-pink-500/5 dark:from-purple-500/10 dark:to-pink-500/10'
+          : 'border-surface-200 dark:border-white/5 bg-white dark:bg-slate-900/50 hover:border-purple-200 dark:hover:border-purple-500/20 hover:shadow-lg dark:hover:shadow-purple-500/5'
         }
       `}
     >
+      {/* Current session indicator */}
+      {session.isCurrent && (
+        <div className="absolute -left-px top-4 bottom-4 w-1 bg-gradient-to-b from-purple-500 to-pink-500 rounded-r-full" />
+      )}
+
       {/* Device icon */}
       <div
         className={`
-          flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center
-          ${session.isCurrent ? 'bg-primary-100 text-primary-600' : 'bg-surface-100 text-surface-500'}
+          flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110
+          ${session.isCurrent
+            ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30'
+            : 'bg-surface-100 dark:bg-slate-800 text-surface-500 dark:text-slate-400'
+          }
         `}
       >
         {deviceIcon}
@@ -58,26 +65,36 @@ export const SessionCard: React.FC<SessionCardProps> = ({ session, onRevoke, isR
 
       {/* Session details */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <h4 className="text-sm font-semibold text-surface-900 truncate">
+        <div className="flex items-center gap-2 mb-2">
+          <h4 className="text-base font-bold text-surface-900 dark:text-white truncate">
             {session.deviceInfo.browser} on {session.deviceInfo.os}
           </h4>
-          {session.isCurrent && <Badge variant="info">Current</Badge>}
+          {session.isCurrent && (
+            <Badge variant="success">
+              <span className="flex items-center gap-1">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                Current
+              </span>
+            </Badge>
+          )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-surface-500">
-          <span className="flex items-center gap-1">
-            <Monitor className="w-3 h-3" />
-            {session.deviceInfo.device} &middot; {session.deviceInfo.platform}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-surface-500 dark:text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <Monitor className="w-3.5 h-3.5" />
+            {session.deviceInfo.device} · {session.deviceInfo.platform}
           </span>
-          <span className="flex items-center gap-1" title={`IP Address: ${session.deviceInfo.ip}`}>
-            <MapPin className="w-3 h-3" />
-            {session.deviceInfo.ip === 'Localhost' || session.deviceInfo.ip === '::1' || session.deviceInfo.ip === '127.0.0.1' 
-              ? 'Localhost' 
+          <span className="flex items-center gap-1.5" title={`IP: ${session.deviceInfo.ip}`}>
+            <MapPin className="w-3.5 h-3.5" />
+            {session.deviceInfo.ip === 'Localhost' || session.deviceInfo.ip === '::1' || session.deviceInfo.ip === '127.0.0.1'
+              ? 'Localhost'
               : session.deviceInfo.ip}
           </span>
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
+          <span className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
             {formatLastActive(session.lastActiveAt)}
           </span>
         </div>
@@ -85,15 +102,18 @@ export const SessionCard: React.FC<SessionCardProps> = ({ session, onRevoke, isR
 
       {/* Revoke button */}
       {!session.isCurrent && (
-        <Button
-          variant="danger"
-          size="sm"
+        <button
           onClick={() => onRevoke(session._id)}
-          isLoading={isRevoking}
-          className="flex-shrink-0"
+          disabled={isRevoking}
+          className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 hover:border-red-500 rounded-xl font-medium text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
+          {isRevoking ? (
+            <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Trash2 className="w-4 h-4" />
+          )}
           Revoke
-        </Button>
+        </button>
       )}
     </div>
   );

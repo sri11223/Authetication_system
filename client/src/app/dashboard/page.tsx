@@ -146,16 +146,16 @@ function DashboardContent() {
 
           <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-surface-200 dark:border-white/5 p-5 hover:shadow-lg dark:hover:shadow-purple-500/5 hover:border-blue-200 dark:hover:border-blue-500/20 transition-all duration-300 group">
             <div className="flex items-center justify-between mb-3">
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className={`w-10 h-10 ${(activityStats?.securityScore?.breakdown?.twoFactorEnabled?.earned || user?.twoFactorEnabled) ? 'bg-emerald-100 dark:bg-emerald-500/20' : 'bg-blue-100 dark:bg-blue-500/20'} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                <Shield className={`w-5 h-5 ${(activityStats?.securityScore?.breakdown?.twoFactorEnabled?.earned || user?.twoFactorEnabled) ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'}`} />
               </div>
-              <Badge variant={user?.twoFactorEnabled ? 'success' : 'neutral'}>
-                {user?.twoFactorEnabled ? '2FA On' : '2FA Off'}
+              <Badge variant={(activityStats?.securityScore?.breakdown?.twoFactorEnabled?.earned || user?.twoFactorEnabled) ? 'success' : 'warning'}>
+                {(activityStats?.securityScore?.breakdown?.twoFactorEnabled?.earned || user?.twoFactorEnabled) ? '2FA On' : '2FA Off'}
               </Badge>
             </div>
             <p className="text-xs text-surface-500 dark:text-slate-500 uppercase tracking-wider font-medium">Security</p>
             <p className="text-lg font-bold text-surface-900 dark:text-white mt-0.5">
-              {user?.twoFactorEnabled ? 'Protected' : 'Basic'}
+              {(activityStats?.securityScore?.breakdown?.twoFactorEnabled?.earned || user?.twoFactorEnabled) ? 'Protected' : 'Basic'}
             </p>
           </div>
 
@@ -277,13 +277,23 @@ function DashboardContent() {
                   </button>
                 </Link>
                 <Link href={ROUTES.SECURITY}>
-                  <button className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl text-white transition-all group">
-                    <span className="flex items-center gap-2">
-                      <Lock className="w-4 h-4" />
-                      <span className="text-sm font-medium">Enable 2FA</span>
-                    </span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </button>
+                  {(activityStats?.securityScore?.breakdown?.twoFactorEnabled?.earned || user?.twoFactorEnabled) ? (
+                    <button className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 rounded-xl text-white transition-all group">
+                      <span className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-sm font-medium">2FA Active</span>
+                      </span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  ) : (
+                    <button className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-xl text-white transition-all group">
+                      <span className="flex items-center gap-2">
+                        <Lock className="w-4 h-4" />
+                        <span className="text-sm font-medium">Enable 2FA</span>
+                      </span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  )}
                 </Link>
               </div>
             </div>
