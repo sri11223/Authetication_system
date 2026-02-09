@@ -11,6 +11,7 @@ const { apiLimiter } = require('./middleware/rateLimiter');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const sessionRoutes = require('./routes/session.routes');
+const activityRoutes = require('./routes/activity.routes');
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.get('/api/health', (_req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/activity', activityRoutes);
 
 // 404 handler
 app.use((_req, res) => {
