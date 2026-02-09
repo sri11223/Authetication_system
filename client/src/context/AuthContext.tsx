@@ -32,6 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     // Clear refresh token cookie
     await clearRefreshTokenCookie();
+    removeAuthCookie(); // Clear middleware cookie
     setUser(null);
   }, []);
 
