@@ -17,7 +17,7 @@ const ApiError = require('../utils/ApiError');
  */
 const register = async ({ name, email, password }) => {
   console.log('[AuthService] Register attempt:', { email, passwordLength: password?.length });
-  
+
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     throw ApiError.conflict('An account with this email already exists');
@@ -25,14 +25,14 @@ const register = async ({ name, email, password }) => {
 
   console.log('[AuthService] Creating user with password (will be hashed by pre-save hook)...');
   const user = await User.create({ name, email, password });
-  
+
   console.log('[AuthService] User created:', {
     id: user._id,
     email: user.email,
     hasPassword: !!user.password,
     passwordHashLength: user.password?.length,
   });
-  
+
   // Verify the password was hashed correctly by testing it
   if (user.password) {
     const testComparison = await user.comparePassword(password);
@@ -92,7 +92,7 @@ const verifyEmail = async (rawToken) => {
  */
 const login = async ({ email, password }, req) => {
   console.log('[AuthService] Login attempt for email:', email);
-  
+
   // Find user with password field included
   const user = await User.findOne({ email }).select('+password');
 
@@ -119,13 +119,13 @@ const login = async ({ email, password }, req) => {
   console.log('[AuthService] Comparing password...');
   const isPasswordValid = await user.comparePassword(password);
   console.log('[AuthService] Password comparison result:', isPasswordValid);
-  
+
   if (!isPasswordValid) {
     console.log('[AuthService] Invalid password for user:', user.email);
     console.log('[AuthService] Failed login attempts before increment:', user.failedLoginAttempts);
     // Increment failed login attempts
     await user.incLoginAttempts();
-    
+
     // Reload user to check if account is now locked
     const updatedUser = await User.findById(user._id);
     if (updatedUser.isAccountLocked() && updatedUser.emailNotifications) {
@@ -285,7 +285,7 @@ const resetPassword = async (rawToken, newPassword) => {
  */
 const logout = async (sessionId, userId, req) => {
   await sessionService.revokeSession(sessionId, userId);
-  
+
   // Log logout activity
   await ActivityLog.createLog(
     userId,
@@ -302,7 +302,7 @@ const logout = async (sessionId, userId, req) => {
  */
 const logoutAll = async (userId, req) => {
   await sessionService.revokeAllSessions(userId);
-  
+
   // Log logout all activity
   await ActivityLog.createLog(
     userId,
@@ -388,18 +388,20 @@ const loginWith2FA = async (userId, token, req) => {
     { sessionId: session._id, twoFactor: true }
   );
 
-  // Send security alert if notifications enabled
+  // Send security alert if notifications enabled (async - don't wait)
   if (user.emailNotifications) {
     const deviceInfo = `${req.useragent?.browser || 'Unknown'} on ${req.useragent?.os || 'Unknown'}`;
     const ip = req.clientIp || req.ip || 'Unknown';
-    await sendSecurityAlert(
+
+    // Don't await email sending to avoid blocking response
+    sendSecurityAlert(
       user.email,
       user.name,
       'New Login with 2FA',
       ip,
       deviceInfo,
       `${process.env.CLIENT_URL || ''}/sessions`
-    );
+    ).catch(err => console.error('[AuthService] Failed to send 2FA login alert:', err.message));
   }
 
   return {
