@@ -9,13 +9,11 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   /**
-   * Check for access token in cookies or Authorization header.
-   * Note: The actual token lives in localStorage (client-side), so this middleware
-   * uses a lightweight "auth-status" cookie that's set client-side after login
-   * to hint at auth state for route protection. The real auth check happens
-   * on the backend when the API is called.
+   * Note: Since the backend is on a different domain (Render) and sets HttpOnly cookies,
+   * the Next.js Middleware (Vercel) cannot read them.
+   * We use a client-side 'auth-status' cookie to signal authentication state.
    */
-  const hasAuthCookie = request.cookies.has('refreshToken');
+  const hasAuthCookie = request.cookies.has('auth-status');
 
   // Redirect authenticated users away from auth pages (login/register)
   if (AUTH_ROUTES.some((route) => pathname === route) && hasAuthCookie) {

@@ -6,7 +6,7 @@ import { User } from '@/types';
 import { authService } from '@/services/auth.service';
 import { ACCESS_TOKEN_KEY } from '@/constants';
 import { ROUTES } from '@/constants/routes';
-import { clearRefreshTokenCookie } from '@/utils/cookies';
+import { clearRefreshTokenCookie, setAuthCookie, removeAuthCookie } from '@/utils/cookies';
 
 interface AuthContextType {
   user: User | null;
@@ -153,6 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Normal login success
       if (response.success && response.data) {
         localStorage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
+        setAuthCookie(); // Set middleware cookie
         setUser(response.data.user);
         router.push(ROUTES.DASHBOARD);
         return; // Success, no error
@@ -190,6 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.success && accessToken) {
         console.log('[AuthContext] 2FA success, setting token and user');
         localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+        setAuthCookie(); // Set middleware cookie
         setUser(userData);
 
         // Force a small delay to ensure state updates before redirect
