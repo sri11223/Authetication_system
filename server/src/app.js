@@ -18,9 +18,25 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: env.CLIENT_URL,
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      env.CLIENT_URL?.replace(/\/$/, ''), // Remove trailing slash if present
+      'https://authetication-system.vercel.app'
+    ].filter(Boolean);
+
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      console.log('Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-client-real-ip'],
 }));
 
