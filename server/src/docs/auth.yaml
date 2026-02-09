@@ -1,0 +1,557 @@
+# Authentication
+
+/auth/register:
+  post:
+    tags:
+      - Authentication
+    summary: Register a new user
+    description: |
+      Creates a new user account and sends a verification email.
+      The user must verify their email before they can log in.
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - name
+              - email
+              - password
+            properties:
+              name:
+                type: string
+                minLength: 2
+                maxLength: 50
+                example: John Doe
+              email:
+                type: string
+                format: email
+                example: john@example.com
+              password:
+                type: string
+                minLength: 8
+                description: Must contain uppercase, lowercase, number, and special character
+                example: SecurePass123!
+    responses:
+      '201':
+        description: User created successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                message:
+                  type: string
+                  example: Registration successful. Please check your email to verify your account.
+                data:
+                  type: object
+                  properties:
+                    user:
+                      $ref: '#/components/schemas/User'
+      '400':
+        $ref: '#/components/responses/ValidationError'
+      '409':
+        description: Email already exists
+        content:
+          application/json:
+            example:
+              success: false
+              message: An account with this email already exists
+
+/auth/login:
+  post:
+    tags:
+      - Authentication
+    summary: Login user
+    description: |
+      Authenticates user with email and password.
+      Returns JWT tokens and sets HTTP-only refresh token cookie.
+      If 2FA is enabled, returns `requires2FA: true` instead of tokens.
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - email
+              - password
+            properties:
+              email:
+                type: string
+                format: email
+                example: john@example.com
+              password:
+                type: string
+                example: SecurePass123!
+    responses:
+      '200':
+        description: Login successful (or 2FA required)
+        content:
+          application/json:
+            examples:
+              success:
+                summary: Normal login
+                value:
+                  success: true
+                  message: Login successful
+                  data:
+                    user:
+                      id: '60d5ec49f1b2c8b1a4c8e1a1'
+                      name: John Doe
+                      email: john@example.com
+                      isEmailVerified: true
+                    tokens:
+                      accessToken: eyJhbGciOiJIUzI1NiIs...
+                      refreshToken: eyJhbGciOiJIUzI1NiIs...
+              requires2FA:
+                summary: 2FA required
+                value:
+                  success: true
+                  requires2FA: true
+                  userId: '60d5ec49f1b2c8b1a4c8e1a1'
+                  message: 2FA verification required
+      '401':
+        description: Invalid credentials
+      '403':
+        description: Email not verified or account locked
+
+/auth/login-2fa:
+  post:
+    tags:
+      - Two-Factor Auth
+    summary: Complete login with 2FA
+    description: Completes authentication when 2FA is enabled
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - userId
+              - token
+            properties:
+              userId:
+                type: string
+                example: '60d5ec49f1b2c8b1a4c8e1a1'
+              token:
+                type: string
+                description: 6-digit TOTP code or backup code
+                example: '123456'
+    responses:
+      '200':
+        description: Login successful
+      '401':
+        description: Invalid 2FA token
+
+/auth/verify-email:
+  post:
+    tags:
+      - Authentication
+    summary: Verify email address
+    description: Verifies user's email using the token sent via email
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - token
+            properties:
+              token:
+                type: string
+                example: abc123def456...
+    responses:
+      '200':
+        description: Email verified successfully
+      '400':
+        description: Invalid or expired token
+
+/auth/resend-verification:
+  post:
+    tags:
+      - Authentication
+    summary: Resend verification email
+    description: Sends a new verification email to the user
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - email
+            properties:
+              email:
+                type: string
+                format: email
+    responses:
+      '200':
+        description: If email exists, verification link sent
+
+/auth/refresh-token:
+  post:
+    tags:
+      - Authentication
+    summary: Refresh access token
+    description: |
+      Uses the refresh token (from cookie or body) to get a new access token.
+      Also rotates the refresh token for security.
+    security: []
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              refreshToken:
+                type: string
+                description: Optional if using cookie
+    responses:
+      '200':
+        description: New tokens generated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    accessToken:
+                      type: string
+                    refreshToken:
+                      type: string
+      '401':
+        description: Invalid or expired refresh token
+
+/auth/logout:
+  post:
+    tags:
+      - Authentication
+    summary: Logout from current device
+    description: Revokes the current session and clears the refresh token cookie
+    responses:
+      '200':
+        description: Logged out successfully
+      '401':
+        $ref: '#/components/responses/UnauthorizedError'
+
+/auth/logout-all:
+  post:
+    tags:
+      - Authentication
+    summary: Logout from all devices
+    description: Revokes all active sessions for the user
+    responses:
+      '200':
+        description: Logged out from all devices
+
+/auth/me:
+  get:
+    tags:
+      - Profile
+    summary: Get current user
+    description: Returns the authenticated user's profile information
+    responses:
+      '200':
+        description: User profile
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    user:
+                      $ref: '#/components/schemas/User'
+      '401':
+        $ref: '#/components/responses/UnauthorizedError'
+
+/auth/profile:
+  patch:
+    tags:
+      - Profile
+    summary: Update user profile
+    description: Updates the user's name
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                minLength: 2
+                maxLength: 50
+    responses:
+      '200':
+        description: Profile updated
+      '400':
+        $ref: '#/components/responses/ValidationError'
+
+/auth/forgot-password:
+  post:
+    tags:
+      - Password Management
+    summary: Request password reset
+    description: |
+      Sends a password reset link to the user's email.
+      Token expires in 1 hour and is single-use.
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - email
+            properties:
+              email:
+                type: string
+                format: email
+    responses:
+      '200':
+        description: If email exists, reset link sent
+        content:
+          application/json:
+            example:
+              success: true
+              message: If the email exists, a password reset link has been sent
+
+/auth/reset-password:
+  post:
+    tags:
+      - Password Management
+    summary: Reset password with token
+    description: |
+      Resets the password using the token from email.
+      **Important:** This invalidates ALL active sessions for security.
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - token
+              - password
+            properties:
+              token:
+                type: string
+              password:
+                type: string
+                minLength: 8
+    responses:
+      '200':
+        description: Password reset successful
+      '400':
+        description: Invalid or expired token
+
+/auth/change-password:
+  post:
+    tags:
+      - Password Management
+    summary: Change password (authenticated)
+    description: |
+      Changes the password for the logged-in user.
+      Requires current password verification.
+      Invalidates all sessions after change.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - currentPassword
+              - newPassword
+            properties:
+              currentPassword:
+                type: string
+              newPassword:
+                type: string
+                minLength: 8
+    responses:
+      '200':
+        description: Password changed, all sessions revoked
+      '401':
+        description: Current password incorrect
+
+/auth/2fa/secret:
+  get:
+    tags:
+      - Two-Factor Auth
+    summary: Generate 2FA secret
+    description: Generates a new TOTP secret and QR code for 2FA setup
+    responses:
+      '200':
+        description: 2FA setup data
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: object
+                  properties:
+                    secret:
+                      type: string
+                      description: Base32 encoded secret
+                    qrCode:
+                      type: string
+                      description: Data URL for QR code image
+                    manualEntryKey:
+                      type: string
+
+/auth/2fa/enable:
+  post:
+    tags:
+      - Two-Factor Auth
+    summary: Enable 2FA
+    description: Enables 2FA after verifying the TOTP token
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - token
+            properties:
+              token:
+                type: string
+                description: 6-digit TOTP code
+                example: '123456'
+    responses:
+      '200':
+        description: 2FA enabled
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                message:
+                  type: string
+                data:
+                  type: object
+                  properties:
+                    backupCodes:
+                      type: array
+                      items:
+                        type: string
+                      description: One-time backup codes (save these!)
+      '400':
+        description: Invalid token
+
+/auth/2fa/disable:
+  post:
+    tags:
+      - Two-Factor Auth
+    summary: Disable 2FA
+    description: Disables 2FA after verifying current TOTP token
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - token
+            properties:
+              token:
+                type: string
+                example: '123456'
+    responses:
+      '200':
+        description: 2FA disabled
+      '400':
+        description: Invalid token
+
+/auth/activity:
+  get:
+    tags:
+      - Activity
+    summary: Get activity log
+    description: Returns the user's recent activity log
+    responses:
+      '200':
+        description: Activity log
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                data:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Activity'
+
+/auth/account:
+  delete:
+    tags:
+      - Profile
+    summary: Delete account
+    description: Permanently deletes the user account and all associated data
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - password
+            properties:
+              password:
+                type: string
+                description: Current password for confirmation
+    responses:
+      '200':
+        description: Account deleted
+      '401':
+        description: Invalid password
+
+/auth/email-notifications:
+  patch:
+    tags:
+      - Profile
+    summary: Update email notification settings
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - enabled
+            properties:
+              enabled:
+                type: boolean
+    responses:
+      '200':
+        description: Settings updated

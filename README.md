@@ -235,7 +235,12 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 ---
 
-## API Documentation
+### Interactive Documentation (Swagger UI)
+
+The API documentation is available as an interactive Swagger UI.
+
+1. Start the server: `npm run dev`
+2. Visit: **http://localhost:5000/api-docs**
 
 ### Auth Endpoints
 

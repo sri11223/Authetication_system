@@ -1,0 +1,108 @@
+# Activity & Security
+
+/activity/stats:
+  get:
+    tags:
+      - Activity
+    summary: Get security statistics
+    description: Returns login activity stats for the last 7 days and a calculated security score.
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Security stats and score
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  properties:
+                    dailyLogins:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          date:
+                            type: string
+                            example: "2023-10-25"
+                          day:
+                            type: string
+                            example: "Wed"
+                          count:
+                            type: integer
+                            example: 5
+                    totalLogins:
+                      type: integer
+                      example: 25
+                    activeSessions:
+                      type: integer
+                      example: 2
+                    securityScore:
+                      type: object
+                      properties:
+                        score:
+                          type: integer
+                          example: 85
+                        maxScore:
+                          type: integer
+                          example: 100
+                        breakdown:
+                          type: object
+                          description: Detailed breakdown of how the score was calculated
+                          properties:
+                            emailVerified:
+                              type: object
+                              properties:
+                                points: { type: integer }
+                                earned: { type: boolean }
+                            twoFactorEnabled:
+                              type: object
+                              properties:
+                                points: { type: integer }
+                                earned: { type: boolean }
+      '401':
+        $ref: '#/components/responses/UnauthorizedError'
+
+/activity/recent:
+  get:
+    tags:
+      - Activity
+    summary: Get recent activity timeline
+    description: Returns a timeline of the user's recent security-related activities (logins, password changes, etc.).
+    security:
+      - bearerAuth: []
+    parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 10
+        description: Number of activity items to return (max 50)
+    responses:
+      '200':
+        description: Recent activity list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                data:
+                  type: object
+                  properties:
+                    total:
+                      type: integer
+                      example: 50
+                    activities:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Activity'
+      '401':
+        $ref: '#/components/responses/UnauthorizedError'

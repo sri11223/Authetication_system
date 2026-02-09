@@ -80,6 +80,10 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+// Swagger Documentation
+const { setupSwagger } = require('./config/swagger');
+setupSwagger(app);
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
