@@ -122,19 +122,8 @@ userSchema.pre('save', async function (next) {
   }
 
   // Hash the new password
-  console.log('[User.pre-save] Hashing password...', {
-    isNew: this.isNew,
-    email: this.email,
-    originalPasswordLength: this.password?.length,
-  });
-
   const salt = await bcrypt.genSalt(env.BCRYPT_SALT_ROUNDS);
   const hashedPassword = await bcrypt.hash(this.password, salt);
-
-  console.log('[User.pre-save] Password hashed:', {
-    hashedLength: hashedPassword?.length,
-    hashPrefix: hashedPassword?.substring(0, 15),
-  });
 
   this.password = hashedPassword;
 
@@ -162,24 +151,11 @@ userSchema.methods.hasUsedPassword = async function (candidatePassword) {
 };
 
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  if (!this.password) {
-    console.log('[User.comparePassword] No password hash found in user document');
+  if (!this.password || !candidatePassword) {
     return false;
   }
 
-  if (!candidatePassword) {
-    console.log('[User.comparePassword] No candidate password provided');
-    return false;
-  }
-
-  const result = await bcrypt.compare(candidatePassword, this.password);
-  console.log('[User.comparePassword] Comparison result:', result, {
-    hasPasswordHash: !!this.password,
-    passwordHashLength: this.password?.length,
-    candidatePasswordLength: candidatePassword?.length,
-  });
-
-  return result;
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
 userSchema.methods.hasPasswordChangedAfter = function (jwtTimestamp) {

@@ -45,8 +45,8 @@ Alternatively, the system uses HTTP-only cookies for automatic token handling.
                 description: 'Development server',
             },
             {
-                url: 'https://api.yourdomain.com/api',
-                description: 'Production server',
+                url: 'https://authetication-system.onrender.com/api',
+                description: 'Production server (Render)',
             },
         ],
         tags: [
