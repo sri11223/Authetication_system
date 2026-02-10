@@ -1,5 +1,12 @@
+const { Resend } = require('resend');
 const transporter = require('../config/email');
 const env = require('../config/env');
+
+let resend;
+if (env.RESEND_API_KEY) {
+  resend = new Resend(env.RESEND_API_KEY);
+}
+
 
 const EMAIL_TEMPLATES = {
   verification: (name, link) => ({
@@ -108,6 +115,24 @@ const EMAIL_TEMPLATES = {
  * Falls back to console logging in development when SMTP isn't configured.
  */
 const sendEmail = async (to, template) => {
+  // Try Resend first (Primary)
+  if (resend) {
+    try {
+      const data = await resend.emails.send({
+        from: 'Auth System <onboarding@resend.dev>',
+        to,
+        subject: template.subject,
+        html: template.html,
+      });
+      console.log('[Email] Sent via Resend:', data.id);
+      return;
+    } catch (error) {
+      console.warn('[Email] Resend failed, falling back to SMTP:', error.message);
+      // Fall through to SMTP
+    }
+  }
+
+  // Fallback to SMTP
   if (!transporter) {
     console.log(`\n[Email Dev Mode] To: ${to}`);
     console.log(`Subject: ${template.subject}`);

@@ -23,6 +23,8 @@ const env = {
 
   BCRYPT_SALT_ROUNDS: parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12,
 
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+
   TRUST_PROXY: process.env.TRUST_PROXY === 'true',
 
   isDevelopment() {
