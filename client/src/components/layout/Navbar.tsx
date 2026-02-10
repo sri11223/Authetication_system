@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/constants/routes';
 import { Button } from '@/components/ui/Button';
-import { Shield, Menu, X, LogOut, Monitor, LayoutDashboard, ChevronDown, Settings, Moon, Sun } from 'lucide-react';
+import { Shield, Menu, X, LogOut, Monitor, LayoutDashboard, ChevronDown, Settings, Moon, Sun, ShieldCheck } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 
 interface NavbarProps {
@@ -73,6 +73,13 @@ export const Navbar: React.FC<NavbarProps> = ({ variant = 'default' }) => {
                   <Settings className="w-4 h-4" />
                   Security
                 </Link>
+
+                {user?.role === 'admin' && (
+                  <Link href="/admin" className={navLinkClass('/admin')}>
+                    <ShieldCheck className="w-4 h-4" />
+                    Admin
+                  </Link>
+                )}
 
                 <button
                   onClick={toggleTheme}
@@ -216,6 +223,16 @@ export const Navbar: React.FC<NavbarProps> = ({ variant = 'default' }) => {
                   <Settings className="w-4 h-4" />
                   Security
                 </Link>
+                {user?.role === 'admin' && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm ${isActive('/admin') ? 'bg-primary-50 text-primary-700 font-semibold' : 'text-surface-700 hover:bg-surface-100'}`}
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    Admin Panel
+                  </Link>
+                )}
                 <hr className="border-surface-200 my-2" />
                 <button
                   onClick={() => { logout(); setIsMobileMenuOpen(false); }}

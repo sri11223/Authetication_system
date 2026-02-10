@@ -3,7 +3,8 @@ export interface User {
   name: string;
   email: string;
   isEmailVerified: boolean;
-  createdAt?: string;
+  role: 'user' | 'admin';
+  createdAt: string;
   twoFactorEnabled?: boolean;
   emailNotifications?: boolean;
 }

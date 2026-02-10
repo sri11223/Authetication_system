@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Badge } from '@/components/ui/Badge';
@@ -38,10 +39,18 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const { user } = useAuth();
+  const router = useRouter(); // Import useRouter
   const [sessionCount, setSessionCount] = useState<number>(0);
   const [activityStats, setActivityStats] = useState<ActivityStats | null>(null);
   const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Redirect admins to admin dashboard
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      router.push('/admin');
+    }
+  }, [user, router]);
 
   useEffect(() => {
     const fetchData = async () => {

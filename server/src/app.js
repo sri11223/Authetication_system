@@ -12,6 +12,7 @@ const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const sessionRoutes = require('./routes/session.routes');
 const activityRoutes = require('./routes/activity.routes');
+const adminRoutes = require('./routes/admin.routes'); // [NEW]
 
 const app = express();
 
@@ -104,6 +105,7 @@ setupSwagger(app);
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 handler
 app.use((_req, res) => {

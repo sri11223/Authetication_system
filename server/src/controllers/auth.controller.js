@@ -36,7 +36,7 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const result = await authService.login(req.body, req);
-  
+
   console.log('[AuthController] Login result:', {
     requires2FA: result.requires2FA,
     success: !result.requires2FA,
@@ -67,7 +67,10 @@ const login = asyncHandler(async (req, res) => {
     success: true,
     message: 'Login successful',
     data: {
-      user: result.user,
+      user: {
+        ...result.user,
+        role: result.user.role || 'user'
+      },
       accessToken: result.tokens.accessToken,
     },
   });
@@ -149,7 +152,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   const result = await authService.resetPassword(token, password);
 
   // Clear refresh token cookie
-  res.clearCookie('refreshToken', { 
+  res.clearCookie('refreshToken', {
     path: '/',
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -167,7 +170,7 @@ const resetPassword = asyncHandler(async (req, res) => {
  * Used when session is invalid and we need to clear the cookie
  */
 const clearCookie = asyncHandler(async (req, res) => {
-  res.clearCookie('refreshToken', { 
+  res.clearCookie('refreshToken', {
     path: '/',
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -192,7 +195,7 @@ const logout = asyncHandler(async (req, res) => {
   }
 
   // Always clear the refresh token cookie
-  res.clearCookie('refreshToken', { 
+  res.clearCookie('refreshToken', {
     path: '/',
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -217,7 +220,7 @@ const logoutAll = asyncHandler(async (req, res) => {
   }
 
   // Always clear the refresh token cookie
-  res.clearCookie('refreshToken', { 
+  res.clearCookie('refreshToken', {
     path: '/',
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -235,7 +238,7 @@ const changePassword = asyncHandler(async (req, res) => {
   const result = await authService.changePassword(req.user._id, currentPassword, newPassword);
 
   // Clear refresh token cookie (all sessions invalidated)
-  res.clearCookie('refreshToken', { 
+  res.clearCookie('refreshToken', {
     path: '/',
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -276,7 +279,7 @@ const deleteAccount = asyncHandler(async (req, res) => {
   const result = await authService.deleteAccount(req.user._id, password);
 
   // Clear refresh token cookie
-  res.clearCookie('refreshToken', { 
+  res.clearCookie('refreshToken', {
     path: '/',
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -308,6 +311,7 @@ const getMe = asyncHandler(async (req, res) => {
         name: req.user.name,
         email: req.user.email,
         isEmailVerified: req.user.isEmailVerified,
+        role: req.user.role,
         createdAt: req.user.createdAt,
       },
     },

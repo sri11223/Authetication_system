@@ -156,7 +156,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem(ACCESS_TOKEN_KEY, response.data.accessToken);
         setAuthCookie(); // Set middleware cookie
         setUser(response.data.user);
-        router.push(ROUTES.DASHBOARD);
+
+        if (response.data.user.role === 'admin') {
+          router.push('/admin');
+        } else {
+          router.push(ROUTES.DASHBOARD);
+        }
         return; // Success, no error
       }
 
@@ -198,7 +203,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Force a small delay to ensure state updates before redirect
         setTimeout(() => {
           console.log('[AuthContext] Redirecting to dashboard...');
-          router.push(ROUTES.DASHBOARD);
+          if (userData.role === 'admin') {
+            router.push('/admin');
+          } else {
+            router.push(ROUTES.DASHBOARD);
+          }
         }, 100);
       } else {
         console.error('[AuthContext] 2FA failed or missing token:', response);
@@ -257,4 +266,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export const useAuth = () => {
+  const context = React.useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
