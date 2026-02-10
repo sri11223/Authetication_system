@@ -28,8 +28,8 @@ export default function UsersManagement() {
         try {
             const response = await adminService.getUsers(pageNum);
             setData(response);
-        } catch (error) {
-            toast.error('Failed to fetch users');
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to fetch users');
         } finally {
             setLoading(false);
         }
@@ -49,8 +49,8 @@ export default function UsersManagement() {
             await adminService.deleteUser(userId);
             toast.success('User deleted successfully');
             fetchUsers(page); // Refresh list
-        } catch (error) {
-            toast.error('Failed to delete user');
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to delete user');
         }
     };
 
@@ -62,8 +62,8 @@ export default function UsersManagement() {
             setSelectedUser(details.user);
             setUserSessions(details.sessions);
             setUserActivity(details.activity);
-        } catch (error) {
-            toast.error('Failed to fetch user details');
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to fetch user details');
             setIsModalOpen(false);
         } finally {
             setModalLoading(false);

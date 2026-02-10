@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const Session = require('../models/Session');
 
+const ApiError = require('../utils/ApiError');
+
 const getSystemStats = async () => {
     const totalUsers = await User.countDocuments();
     const activeSessions = await Session.countDocuments({ isActive: true });
@@ -94,10 +96,10 @@ const getAllUsers = async (page = 1, limit = 10) => {
 };
 
 const deleteUser = async (userId) => {
-    // Prevent deleting self (though logic should be in controller too)
+    // Prevent deleting self (logic should be in controller too, but safe here)
     const user = await User.findByIdAndDelete(userId);
     if (!user) {
-        throw new Error('User not found');
+        throw ApiError.notFound('User not found');
     }
     // Delete all sessions for this user
     await Session.deleteMany({ userId });
@@ -112,7 +114,7 @@ const revokeSession = async (sessionId) => {
     );
 
     if (!session) {
-        throw new Error('Session not found');
+        throw ApiError.notFound('Session not found');
     }
     return { message: 'Session revoked successfully' };
 };
@@ -122,7 +124,7 @@ const { ActivityLog } = require('../models/ActivityLog');
 const getUserDetails = async (userId) => {
     const userDoc = await User.findById(userId).select('-password -__v').lean();
     if (!userDoc) {
-        throw new Error('User not found');
+        throw ApiError.notFound('User not found');
     }
 
     const user = { ...userDoc, id: userDoc._id };

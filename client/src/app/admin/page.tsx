@@ -19,6 +19,7 @@ import {
     Cell,
     Legend
 } from 'recharts';
+import { toast } from 'react-hot-toast';
 
 
 
@@ -48,8 +49,9 @@ export default function AdminDashboard() {
             try {
                 const data = await adminService.getStats();
                 setStats(data);
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Failed to fetch stats', error);
+                toast.error(error.response?.data?.message || 'Failed to fetch dashboard stats');
             } finally {
                 setLoading(false);
             }

@@ -118,13 +118,19 @@ const sendEmail = async (to, template) => {
   // Try Resend first (Primary)
   if (resend) {
     try {
-      const data = await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: 'Auth System <onboarding@resend.dev>',
         to,
         subject: template.subject,
         html: template.html,
       });
-      console.log('[Email] Sent via Resend:', data.id);
+
+      if (error) {
+        console.error('[Email] Resend API Error:', error);
+        throw new Error(error.message);
+      }
+
+      console.log('[Email] Sent via Resend:', data?.id);
       return;
     } catch (error) {
       console.warn('[Email] Resend failed, falling back to SMTP:', error.message);

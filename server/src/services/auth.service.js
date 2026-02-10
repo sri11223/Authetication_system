@@ -98,7 +98,7 @@ const login = async ({ email, password }, req) => {
 
   if (!user) {
     console.log('[AuthService] User not found for email:', email);
-    throw ApiError.unauthorized('Invalid email or password');
+    throw ApiError.unauthorized('User with this email does not exist');
   }
 
   console.log('[AuthService] User found:', {
@@ -133,7 +133,7 @@ const login = async ({ email, password }, req) => {
       await sendAccountLockedEmail(updatedUser.email, updatedUser.name, unlockTime);
     }
 
-    throw ApiError.unauthorized('Invalid email or password');
+    throw ApiError.unauthorized('Incorrect password');
   }
 
   console.log('[AuthService] Password valid for user:', user.email);
