@@ -23,7 +23,8 @@ const env = {
 
   BCRYPT_SALT_ROUNDS: parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12,
 
-  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
+  SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL || 'srikrishnanutalapati@gmail.com',
 
   TRUST_PROXY: process.env.TRUST_PROXY === 'true',
 

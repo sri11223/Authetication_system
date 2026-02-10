@@ -1,10 +1,9 @@
-const { Resend } = require('resend');
 const transporter = require('../config/email');
 const env = require('../config/env');
+const sgMail = require('@sendgrid/mail');
 
-let resend;
-if (env.RESEND_API_KEY) {
-  resend = new Resend(env.RESEND_API_KEY);
+if (env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(env.SENDGRID_API_KEY);
 }
 
 
@@ -114,46 +113,54 @@ const EMAIL_TEMPLATES = {
  * Sends an email using the configured transporter.
  * Falls back to console logging in development when SMTP isn't configured.
  */
+const sgMail = require('@sendgrid/mail');
+
+if (env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(env.SENDGRID_API_KEY);
+}
+
+
 const sendEmail = async (to, template) => {
-  // Try Resend first (Primary)
-  if (resend) {
+  // 1. Try SendGrid (Primary for Single Sender Verification)
+  if (env.SENDGRID_API_KEY) {
     try {
-      const { data, error } = await resend.emails.send({
-        from: 'Auth System <onboarding@resend.dev>',
+      const msg = {
         to,
+        from: env.SENDGRID_FROM_EMAIL || 'srikrishnanutalapati@gmail.com', // Must be the verified sender
         subject: template.subject,
         html: template.html,
-      });
-
-      if (error) {
-        console.error('[Email] Resend API Error:', error);
-        throw new Error(error.message);
-      }
-
-      console.log('[Email] Sent via Resend:', data?.id);
+      };
+      await sgMail.send(msg);
+      console.log('[Email] Sent via SendGrid');
       return;
     } catch (error) {
-      console.warn('[Email] Resend failed, falling back to SMTP:', error.message);
-      // Fall through to SMTP
+      console.warn('[Email] SendGrid failed, falling back:', error.message);
+      if (error.response) {
+        console.error(error.response.body);
+      }
+      // Fall through to next provider
     }
   }
 
-  // Fallback to SMTP
+  // 2. Fallback to SMTP
   if (!transporter) {
     console.log(`\n[Email Dev Mode] To: ${to}`);
     console.log(`Subject: ${template.subject}`);
-    console.log(`(Email HTML content logged — configure SMTP for actual delivery)\n`);
     return;
   }
 
-  const mailOptions = {
-    from: `"Auth System" <${env.SMTP_USER}>`,
-    to,
-    subject: template.subject,
-    html: template.html,
-  };
-
-  await transporter.sendMail(mailOptions);
+  try {
+    const mailOptions = {
+      from: `"Auth System" <${env.SMTP_USER}>`,
+      to,
+      subject: template.subject,
+      html: template.html,
+    };
+    await transporter.sendMail(mailOptions);
+    console.log('[Email] Sent via SMTP');
+  } catch (error) {
+    console.error('[Email] SMTP Failed:', error.message);
+  }
 };
 
 const sendVerificationEmail = async (email, name, token) => {
