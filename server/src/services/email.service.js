@@ -113,11 +113,7 @@ const EMAIL_TEMPLATES = {
  * Sends an email using the configured transporter.
  * Falls back to console logging in development when SMTP isn't configured.
  */
-const sgMail = require('@sendgrid/mail');
 
-if (env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(env.SENDGRID_API_KEY);
-}
 
 
 const sendEmail = async (to, template) => {
