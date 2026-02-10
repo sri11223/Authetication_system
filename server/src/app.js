@@ -17,7 +17,9 @@ const adminRoutes = require('./routes/admin.routes'); // [NEW]
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Required for Swagger UI to work with Helmet
+}));
 app.use(cors({
   origin: (origin, callback) => {
     const allowedOrigins = [
@@ -88,6 +90,13 @@ if (env.isDevelopment()) {
 app.use('/api', apiLimiter);
 
 // Health check
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Auth System API is live',
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.status(200).json({
     success: true,
