@@ -175,14 +175,15 @@ const login = async ({ email, password }, req) => {
   if (user.emailNotifications) {
     const deviceInfo = `${req.useragent?.browser || 'Unknown'} on ${req.useragent?.os || 'Unknown'}`;
     const ip = req.clientIp || req.ip || 'Unknown';
-    await sendSecurityAlert(
+    // Don't await email sending to avoid blocking response or failing login if email fails
+    sendSecurityAlert(
       user.email,
       user.name,
       'New Login Detected',
       ip,
       deviceInfo,
       `${process.env.CLIENT_URL || ''}/sessions`
-    );
+    ).catch(err => console.error('[AuthService] Failed to send login alert:', err.message));
   }
 
   return {
