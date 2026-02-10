@@ -7,6 +7,16 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=next.js)](https://nextjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
+**Deployed Frontend:** [https://authetication-system.vercel.app](https://authetication-system.vercel.app)  
+**Deployed Backend:** [https://authetication-system.onrender.com](https://authetication-system.onrender.com)
+
+---
+
+### 🔑 Admin Panel Access
+**URL:** [https://authetication-system.vercel.app/login](https://authetication-system.vercel.app/login) (Redirects to Admin Dashboard after login)  
+**Email:** `admin@example.com`  
+**Password:** `adminpassword123`
+
 ---
 
 ## 📑 Table of Contents
