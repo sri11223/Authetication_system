@@ -473,7 +473,7 @@ const deleteAccount = async (userId, password) => {
 
   // Delete all associated data
   const Session = require('../models/Session');
-  const Token = require('../models/Token');
+  const { Token } = require('../models/Token');
 
   await Promise.all([
     Session.deleteMany({ userId }),
